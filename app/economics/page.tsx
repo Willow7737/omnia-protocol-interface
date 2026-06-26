@@ -5,12 +5,18 @@ import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Balance } from '@/lib/api-client';
+import { Balance, TransferRecord } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, DollarSign, Info, ArrowRight } from 'lucide-react';
+import {
+  AlertCircle,
+  DollarSign,
+  Info,
+  ArrowRight,
+  TrendingUp,
+} from 'lucide-react';
 
 export default function EconomicsPage() {
   const { isConfigured, apiClient } = useConfig();
@@ -25,6 +31,12 @@ export default function EconomicsPage() {
   const { data: balance, error: balanceError } = useSWR<Balance>(
     isConfigured && did ? `balance-${did}` : null,
     async () => apiClient!.getBalance(did),
+    { refreshInterval: 10000, revalidateOnFocus: false },
+  );
+
+  const { data: transfers, error: transfersError, mutate: mutateTransfers } = useSWR<TransferRecord[]>(
+    isConfigured ? 'economics-transfers' : null,
+    async () => apiClient!.getTransfers(100),
     { refreshInterval: 10000, revalidateOnFocus: false },
   );
 
@@ -63,8 +75,8 @@ export default function EconomicsPage() {
       setActionSuccess(
         `Spent ${result.amount} UBC from ${result.from_did}. New balance: ${result.new_balance}`,
       );
-      // Trigger SWR revalidation
-      setDid((d) => d);
+      // Trigger SWR revalidation of both balance and transfer history.
+      mutateTransfers();
     } catch (e) {
       setActionError(String(e));
     } finally {
@@ -72,13 +84,16 @@ export default function EconomicsPage() {
     }
   };
 
+  // Aggregate stats from the transfer history.
+  const totalVolume = transfers?.reduce((sum, t) => sum + t.amount, 0) ?? 0;
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <div className="border-b border-border px-8 py-6">
           <h1 className="text-3xl font-bold text-foreground">Economics</h1>
-          <p className="text-foreground/60">UBC balances and spend operations</p>
+          <p className="text-foreground/60">UBC balances, spend operations, and transfer history</p>
         </div>
 
         <div className="flex-1 overflow-auto p-8">
@@ -88,9 +103,55 @@ export default function EconomicsPage() {
             <div className="text-sm text-foreground/70">
               UBC tokens are <strong>soulbound</strong>: the &quot;transfer&quot; endpoint actually
               spends (burns) tokens from the sender&apos;s balance. The recipient does not receive
-              them. The node does not yet expose a list-transfers endpoint, so there is no
-              transaction history view here yet.
+              them. Only successful spends are recorded in the history below.
             </div>
+          </div>
+
+          {/* Summary stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Total Spend Records</span>
+                  <DollarSign className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">{transfers?.length ?? 0}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Total Volume Spent</span>
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">{totalVolume} UBC</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Balance Looked Up</span>
+                  <DollarSign className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  {balance?.balance ?? '...'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Monthly Quota</span>
+                  <DollarSign className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  {balance?.monthly_quota ?? '...'}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Balance lookup */}
@@ -145,7 +206,7 @@ export default function EconomicsPage() {
           </Card>
 
           {/* Spend / transfer */}
-          <Card className="bg-card/50">
+          <Card className="bg-card/50 mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ArrowRight className="w-5 h-5" />
@@ -188,6 +249,74 @@ export default function EconomicsPage() {
               <Button onClick={handleTransfer} disabled={transferring}>
                 {transferring ? 'Spending...' : 'Spend UBC'}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Recent transfers */}
+          <Card className="bg-card/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Recent Spends ({transfers?.length ?? 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {transfersError && (
+                <p className="text-sm text-destructive mb-2">{String(transfersError)}</p>
+              )}
+              {transfers && transfers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-3 text-foreground/60 font-medium">From</th>
+                        <th className="text-left py-3 px-3 text-foreground/60 font-medium">To</th>
+                        <th className="text-right py-3 px-3 text-foreground/60 font-medium">Amount</th>
+                        <th className="text-right py-3 px-3 text-foreground/60 font-medium">New Balance</th>
+                        <th className="text-left py-3 px-3 text-foreground/60 font-medium">Status</th>
+                        <th className="text-left py-3 px-3 text-foreground/60 font-medium">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transfers.map((t) => (
+                        <tr
+                          key={t.id}
+                          className="border-b border-border/50 hover:bg-card transition-colors"
+                        >
+                          <td className="py-3 px-3">
+                            <code className="text-xs font-mono text-primary">
+                              {t.from_did.slice(0, 16)}…
+                            </code>
+                          </td>
+                          <td className="py-3 px-3">
+                            <code className="text-xs font-mono text-primary">
+                              {t.to_did.slice(0, 16)}…
+                            </code>
+                          </td>
+                          <td className="py-3 px-3 text-right font-medium text-foreground">
+                            {t.amount} UBC
+                          </td>
+                          <td className="py-3 px-3 text-right text-foreground/60">
+                            {t.new_balance}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-300">
+                              {t.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-foreground/60 text-xs">
+                            {new Date(t.timestamp).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-foreground/60 text-sm">
+                  No transfers recorded yet. Spend some UBC above to populate the history.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

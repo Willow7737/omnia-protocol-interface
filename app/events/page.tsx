@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Activity, Send, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, Activity, Send, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
 export default function EventsPage() {
   const { isConfigured, apiClient } = useConfig();
@@ -93,18 +93,6 @@ export default function EventsPage() {
         </div>
 
         <div className="flex-1 overflow-auto p-8">
-          {/* Info banner */}
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-foreground/70">
-              The node currently exposes <code className="text-xs">POST /api/v1/events</code> and{' '}
-              <code className="text-xs">GET /api/v1/events/:id</code>, but not a list endpoint.
-              Submit an event below — the response will include its hex ID, which you can use to
-              fetch it via the API directly. A list view will appear here once the node exposes{' '}
-              <code className="text-xs">GET /api/v1/events</code>.
-            </div>
-          </div>
-
           {eventsError && (
             <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <p className="text-destructive text-sm">{String(eventsError)}</p>
@@ -175,6 +163,12 @@ export default function EventsPage() {
               <h2 className="text-lg font-bold text-foreground">
                 Recent Events ({events?.length || 0})
               </h2>
+              {events && events.length > 0 && (
+                <span className="ml-auto text-xs text-foreground/50 flex items-center gap-1">
+                  <Layers className="w-3 h-3" />
+                  {events.length} shown
+                </span>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -246,6 +240,17 @@ function EventCard({
               </span>
               <span className="text-xs text-foreground/50">from {event.creator}</span>
               <span className="text-xs text-foreground/50">seq {event.sequence}</span>
+              <span
+                className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  event.status === 'submitted'
+                    ? 'bg-green-500/20 text-green-300'
+                    : event.status === 'submission_failed'
+                      ? 'bg-red-500/20 text-red-300'
+                      : 'bg-gray-500/20 text-gray-300'
+                }`}
+              >
+                {event.status}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <code className="text-xs font-mono text-foreground/60">{event.id.slice(0, 20)}...</code>
@@ -267,8 +272,12 @@ function EventCard({
           <div className="mt-4 pt-4 border-t border-current border-opacity-20">
             <div className="bg-background/50 rounded p-3 space-y-2">
               <div>
-                <p className="text-xs text-foreground/60 mb-1">Status</p>
-                <p className="text-sm text-foreground">{event.status}</p>
+                <p className="text-xs text-foreground/60 mb-1">Event ID (full)</p>
+                <p className="text-xs font-mono text-foreground/70 break-all">{event.id}</p>
+              </div>
+              <div>
+                <p className="text-xs text-foreground/60 mb-1">Creator (full)</p>
+                <p className="text-xs font-mono text-foreground/70 break-all">{event.creator}</p>
               </div>
               <div>
                 <p className="text-xs text-foreground/60 mb-1">Payload (hex)</p>

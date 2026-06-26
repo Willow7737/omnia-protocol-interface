@@ -88,7 +88,7 @@ export const SubmitEventResultSchema = z.object({
 });
 
 /**
- * Response from `GET /api/v1/events/:id`.
+ * Response from `GET /api/v1/events/:id` AND items in `GET /api/v1/events`.
  */
 export const StoredEventSchema = z.object({
   id: z.string(),
@@ -100,6 +100,13 @@ export const StoredEventSchema = z.object({
   payload: z.string(),
   event_type: z.string(),
   status: z.string(),
+});
+
+/** Envelope returned by `GET /api/v1/events?limit=N`. */
+export const EventListSchema = z.object({
+  events: z.array(StoredEventSchema),
+  count: z.number(),
+  total_in_store: z.number(),
 });
 
 /**
@@ -124,6 +131,74 @@ export const CastVoteResultSchema = z.object({
   epoch: z.number(),
 });
 
+/**
+ * A governance proposal (item in the list returned by
+ * `GET /api/v1/governance/proposals`).
+ *
+ * The server enriches each proposal with a derived `status` field
+ * ("voting" / "expired" / "passed") and a precomputed
+ * `total_participation` for client convenience.
+ */
+export const ProposalSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  created_at_epoch: z.number(),
+  expires_at_epoch: z.number(),
+  votes_for: z.number(),
+  votes_against: z.number(),
+  votes_abstain: z.number(),
+  execution_time: z.number().nullable(),
+  status: z.string(),
+  total_participation: z.number(),
+});
+
+/** Envelope returned by `GET /api/v1/governance/proposals`. */
+export const ProposalListSchema = z.object({
+  proposals: z.array(ProposalSchema),
+  count: z.number(),
+});
+
+/** A UBC spend record (item in the transfers history list). */
+export const TransferRecordSchema = z.object({
+  id: z.string(),
+  from_did: z.string(),
+  to_did: z.string(),
+  amount: z.number(),
+  /** Unix-millisecond timestamp. */
+  timestamp: z.number(),
+  status: z.string(),
+  new_balance: z.number(),
+});
+
+/** Envelope returned by `GET /api/v1/economics/transfers?limit=N`. */
+export const TransferListSchema = z.object({
+  transfers: z.array(TransferRecordSchema),
+  count: z.number(),
+  total_in_history: z.number(),
+});
+
+/** A validator (item in the validators list). */
+export const ValidatorSchema = z.object({
+  /** Hex-encoded NodeId (32 bytes / 64 hex chars). */
+  node_id: z.string(),
+  stake: z.number(),
+  slash_points: z.number(),
+  is_jailed: z.boolean(),
+  /** Derived: "active" / "slashed" / "jailed". */
+  status: z.string(),
+  current_round: z.number(),
+});
+
+/** Envelope returned by `GET /api/v1/validators`. */
+export const ValidatorListSchema = z.object({
+  validators: z.array(ValidatorSchema),
+  count: z.number(),
+  active_count: z.number(),
+  jailed_count: z.number(),
+  total_stake: z.number(),
+  current_round: z.number(),
+});
+
 // ────────────────────────────────────────────────────────────────────────────
 // Public health endpoints
 // ────────────────────────────────────────────────────────────────────────────
@@ -144,6 +219,9 @@ export type Balance = z.infer<typeof BalanceSchema>;
 export type TransferResult = z.infer<typeof TransferResultSchema>;
 export type SubmitEventResult = z.infer<typeof SubmitEventResultSchema>;
 export type StoredEvent = z.infer<typeof StoredEventSchema>;
+export type Proposal = z.infer<typeof ProposalSchema>;
+export type TransferRecord = z.infer<typeof TransferRecordSchema>;
+export type Validator = z.infer<typeof ValidatorSchema>;
 export type CreateProposalResult = z.infer<typeof CreateProposalResultSchema>;
 export type CastVoteResult = z.infer<typeof CastVoteResultSchema>;
 
@@ -159,10 +237,19 @@ export type CastVoteResult = z.infer<typeof CastVoteResultSchema>;
  * endpoints tolerate (and ignore) the header, so it's safe to always
  * include it.
  *
- * Endpoints that the node does not yet expose (list validators, list
- * transfers, list proposals, list events) return an empty array with a
- * console warning so the UI can render the "no data" state without
- * throwing. They are marked `TODO(node)` in the source.
+ * Endpoint coverage (matches omnia-node v0.1.76+):
+ * - Public reads:  /healthz, /api/v1/node/info, /api/v1/node/peers,
+ *                  /api/v1/validators, /api/v1/errors,
+ *                  /api/v1/ceremony/state, /api/v1/ceremony/transcript
+ * - Authenticated: /api/v1/events (POST/GET), /api/v1/events/:id,
+ *                  /api/v1/shards/:id/operations (POST),
+ *                  /api/v1/governance/proposals (POST/GET),
+ *                  /api/v1/governance/vote (POST),
+ *                  /api/v1/economics/balance/:did,
+ *                  /api/v1/economics/transfer (POST),
+ *                  /api/v1/economics/transfers (GET),
+ *                  /api/v1/ceremony/contribute (POST),
+ *                  /api/v1/ceremony/finalize (POST)
  */
 export class APIClient {
   private endpoint: string;
@@ -243,16 +330,17 @@ export class APIClient {
   }
 
   /**
-   * TODO(node): list-events endpoint is not yet exposed by the node.
-   * The node only exposes `POST /api/v1/events` and `GET /api/v1/events/:id`.
-   * Until the list endpoint is added, this returns an empty array so the
-   * Events page renders the "no events found" empty state instead of 404ing.
+   * `GET /api/v1/events?limit=N` — list recent events, newest first.
+   *
+   * The server returns events in reverse insertion order (most-recent first).
+   * `limit` defaults to 100 on the server and is capped at 1000.
    */
-  async getEvents(_limit: number = 100): Promise<StoredEvent[]> {
-    console.warn(
-      '[omnia] APIClient.getEvents: node does not yet expose a list endpoint — returning []',
+  async getEvents(limit: number = 100): Promise<StoredEvent[]> {
+    const result = await this.request(
+      `/api/v1/events?limit=${Math.max(1, Math.min(1000, limit))}`,
+      EventListSchema,
     );
-    return [];
+    return result.events;
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -276,14 +364,17 @@ export class APIClient {
   }
 
   /**
-   * TODO(node): list-transfers endpoint is not yet exposed by the node.
-   * Returns [] so the Economics page renders its empty state.
+   * `GET /api/v1/economics/transfers?limit=N` — list recent UBC spend records.
+   *
+   * Returns newest-first. Only successful spends are recorded server-side;
+   * failed transfers are never appended to the history.
    */
-  async getTransfers(_limit: number = 50): Promise<TransferResult[]> {
-    console.warn(
-      '[omnia] APIClient.getTransfers: node does not yet expose a list endpoint — returning []',
+  async getTransfers(limit: number = 50): Promise<TransferRecord[]> {
+    const result = await this.request(
+      `/api/v1/economics/transfers?limit=${Math.max(1, Math.min(1000, limit))}`,
+      TransferListSchema,
     );
-    return [];
+    return result.transfers;
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -324,29 +415,40 @@ export class APIClient {
     });
   }
 
-  /**
-   * TODO(node): list-proposals endpoint is not yet exposed by the node.
-   * Returns [] so the Governance page renders its empty state.
-   */
-  async getProposals(): Promise<CreateProposalResult[]> {
-    console.warn(
-      '[omnia] APIClient.getProposals: node does not yet expose a list endpoint — returning []',
+  /** `GET /api/v1/governance/proposals` — list all governance proposals. */
+  async getProposals(): Promise<Proposal[]> {
+    const result = await this.request(
+      '/api/v1/governance/proposals',
+      ProposalListSchema,
     );
-    return [];
+    return result.proposals;
   }
 
   // ──────────────────────────────────────────────────────────────────────
   // Validators
   // ──────────────────────────────────────────────────────────────────────
 
-  /**
-   * TODO(node): list-validators endpoint is not yet exposed by the node.
-   * Returns [] so the Validators page renders its empty state.
-   */
-  async getValidators(): Promise<unknown[]> {
-    console.warn(
-      '[omnia] APIClient.getValidators: node does not yet expose a validators endpoint — returning []',
-    );
-    return [];
+  /** `GET /api/v1/validators` — list registered validators with slash/jail status. */
+  async getValidators(): Promise<Validator[]> {
+    const result = await this.request('/api/v1/validators', ValidatorListSchema);
+    return result.validators;
+  }
+
+  /** `GET /api/v1/validators` (full envelope) — includes aggregate counts. */
+  async getValidatorsWithStats(): Promise<{
+    validators: Validator[];
+    activeCount: number;
+    jailedCount: number;
+    totalStake: number;
+    currentRound: number;
+  }> {
+    const result = await this.request('/api/v1/validators', ValidatorListSchema);
+    return {
+      validators: result.validators,
+      activeCount: result.active_count,
+      jailedCount: result.jailed_count,
+      totalStake: result.total_stake,
+      currentRound: result.current_round,
+    };
   }
 }

@@ -5,12 +5,13 @@ import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { CreateProposalResult } from '@/lib/api-client';
+import { Proposal } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Vote, Info } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { AlertCircle, Vote, TrendingUp } from 'lucide-react';
 
 export default function GovernancePage() {
   const { isConfigured, apiClient } = useConfig();
@@ -24,7 +25,7 @@ export default function GovernancePage() {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const { data: proposals, error: proposalsError, mutate } = useSWR<CreateProposalResult[]>(
+  const { data: proposals, error: proposalsError, mutate } = useSWR<Proposal[]>(
     isConfigured ? 'governance-proposals' : null,
     async () => apiClient!.getProposals(),
     { refreshInterval: 10000, revalidateOnFocus: false },
@@ -84,6 +85,11 @@ export default function GovernancePage() {
     }
   };
 
+  const activeProposals =
+    proposals?.filter((p) => p.status === 'voting' || p.status === 'pending') || [];
+  const completedProposals =
+    proposals?.filter((p) => p.status === 'passed' || p.status === 'failed' || p.status === 'expired') || [];
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -99,17 +105,6 @@ export default function GovernancePage() {
               <p className="text-destructive text-sm">{String(proposalsError)}</p>
             </div>
           )}
-
-          {/* Info banner */}
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-foreground/70">
-              The node currently exposes proposal <strong>creation</strong> and{' '}
-              <strong>voting</strong> endpoints, but not yet a list endpoint. After creating a
-              proposal, record its ID — the list below will be empty until the node exposes{' '}
-              <code className="text-xs">GET /api/v1/governance/proposals</code>.
-            </div>
-          </div>
 
           {/* Create proposal */}
           <Card className="bg-card/50 mb-8">
@@ -158,58 +153,45 @@ export default function GovernancePage() {
             </CardContent>
           </Card>
 
-          {/* Proposals list */}
-          <div>
+          {/* Active Proposals */}
+          <div className="mb-8">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              Proposals ({proposals?.length ?? 0})
+              Active Proposals ({activeProposals.length})
             </h2>
             <div className="space-y-4">
-              {proposals && proposals.length > 0 ? (
-                proposals.map((p) => (
-                  <Card key={p.id} className="bg-card/50">
-                    <CardHeader>
-                      <CardTitle className="text-lg">{p.id}</CardTitle>
-                      <p className="text-sm text-foreground/60">
-                        Status: {p.status} · Created at epoch {p.created_at_epoch} · Expires at
-                        epoch {p.expires_at_epoch}
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={voting === p.id}
-                          onClick={() => handleVote(p.id, 'for')}
-                        >
-                          {voting === p.id ? 'Voting...' : 'Vote For'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={voting === p.id}
-                          onClick={() => handleVote(p.id, 'against')}
-                        >
-                          {voting === p.id ? 'Voting...' : 'Vote Against'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={voting === p.id}
-                          onClick={() => handleVote(p.id, 'abstain')}
-                        >
-                          {voting === p.id ? 'Voting...' : 'Abstain'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {activeProposals.length > 0 ? (
+                activeProposals.map((p) => (
+                  <ProposalCard
+                    key={p.id}
+                    proposal={p}
+                    onVote={handleVote}
+                    voting={voting}
+                  />
                 ))
               ) : (
                 <Card className="bg-card/50">
                   <CardContent className="pt-6">
-                    <p className="text-foreground/60 text-sm">
-                      No proposals found. Create one above to get started.
-                    </p>
+                    <p className="text-foreground/60 text-sm">No active proposals</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Completed Proposals */}
+          <div>
+            <h2 className="text-xl font-bold text-foreground mb-4">
+              Completed Proposals ({completedProposals.length})
+            </h2>
+            <div className="space-y-4">
+              {completedProposals.length > 0 ? (
+                completedProposals.map((p) => (
+                  <ProposalCard key={p.id} proposal={p} completed onVote={handleVote} voting={voting} />
+                ))
+              ) : (
+                <Card className="bg-card/50">
+                  <CardContent className="pt-6">
+                    <p className="text-foreground/60 text-sm">No completed proposals</p>
                   </CardContent>
                 </Card>
               )}
@@ -220,4 +202,136 @@ export default function GovernancePage() {
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
   );
+}
+
+function ProposalCard({
+  proposal,
+  completed,
+  onVote,
+  voting,
+}: {
+  proposal: Proposal;
+  completed?: boolean;
+  onVote: (id: string, vote: 'for' | 'against' | 'abstain') => void;
+  voting: string | null;
+}) {
+  // Use the server-provided total_participation, falling back to the
+  // sum of vote fields if absent (defensive — schema requires it).
+  const total = proposal.total_participation
+    ?? (proposal.votes_for + proposal.votes_against + proposal.votes_abstain);
+  const yesPercent = total > 0 ? (proposal.votes_for / total) * 100 : 0;
+  const noPercent = total > 0 ? (proposal.votes_against / total) * 100 : 0;
+  const abstainPercent = total > 0 ? (proposal.votes_abstain / total) * 100 : 0;
+
+  return (
+    <Card className="bg-card/50 hover:bg-card/70 transition-colors">
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle className="text-lg mb-2">{proposal.id}</CardTitle>
+            <p className="text-sm text-foreground/60 mb-2">{proposal.description}</p>
+            <div className="flex items-center gap-4 text-xs text-foreground/50">
+              <span>Created epoch {proposal.created_at_epoch}</span>
+              <span>Expires epoch {proposal.expires_at_epoch}</span>
+            </div>
+          </div>
+          <div className={`px-3 py-1 rounded text-sm font-medium whitespace-nowrap ${getStatusColor(proposal.status)}`}>
+            {proposal.status}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Vote Results */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-foreground/60 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Total Participation: {total}
+            </span>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-green-400">For</span>
+              <span className="text-sm text-foreground/60">
+                {proposal.votes_for} ({yesPercent.toFixed(1)}%)
+              </span>
+            </div>
+            <Progress value={yesPercent} className="h-2" />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-red-400">Against</span>
+              <span className="text-sm text-foreground/60">
+                {proposal.votes_against} ({noPercent.toFixed(1)}%)
+              </span>
+            </div>
+            <Progress value={noPercent} className="h-2" />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-yellow-400">Abstain</span>
+              <span className="text-sm text-foreground/60">
+                {proposal.votes_abstain} ({abstainPercent.toFixed(1)}%)
+              </span>
+            </div>
+            <Progress value={abstainPercent} className="h-2" />
+          </div>
+        </div>
+
+        {/* Vote buttons */}
+        {!completed && (
+          <div className="pt-2 border-t border-border/50">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                className="flex-1"
+                disabled={voting === proposal.id}
+                onClick={() => onVote(proposal.id, 'for')}
+              >
+                {voting === proposal.id ? 'Voting...' : 'Vote For'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                disabled={voting === proposal.id}
+                onClick={() => onVote(proposal.id, 'against')}
+              >
+                {voting === proposal.id ? 'Voting...' : 'Vote Against'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                disabled={voting === proposal.id}
+                onClick={() => onVote(proposal.id, 'abstain')}
+              >
+                {voting === proposal.id ? 'Voting...' : 'Abstain'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'voting':
+      return 'bg-blue-500/20 text-blue-300';
+    case 'pending':
+      return 'bg-yellow-500/20 text-yellow-300';
+    case 'passed':
+      return 'bg-green-500/20 text-green-300';
+    case 'expired':
+      return 'bg-gray-500/20 text-gray-300';
+    case 'failed':
+      return 'bg-red-500/20 text-red-300';
+    default:
+      return 'bg-gray-500/20 text-gray-300';
+  }
 }
