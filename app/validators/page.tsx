@@ -7,16 +7,30 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { Validator } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  Zap,
+  AlertTriangle,
+  CheckCircle,
+  Shield,
+  ShieldOff,
+} from 'lucide-react';
 
+/**
+ * Validators page — consumes `GET /api/v1/validators` (public, no JWT).
+ *
+ * Shows each registered validator with its stake, slash points, and jail
+ * status. Aggregate counts (active / jailed / total stake / current round)
+ * come from the same endpoint's envelope.
+ */
 export default function ValidatorsPage() {
   const { isConfigured, apiClient } = useConfig();
   const [configOpen, setConfigOpen] = useState(false);
 
-  const { data: validators, error: validatorsError } = useSWR<Validator[]>(
+  const { data: result, error: validatorsError } = useSWR(
     isConfigured ? 'validators-list' : null,
-    async () => apiClient!.getValidators(),
-    { refreshInterval: 15000, revalidateOnFocus: false }
+    async () => apiClient!.getValidatorsWithStats(),
+    { refreshInterval: 15000, revalidateOnFocus: false },
   );
 
   if (!isConfigured) {
@@ -35,11 +49,13 @@ export default function ValidatorsPage() {
     );
   }
 
-  const activeValidators = validators?.filter((v) => v.status === 'active') || [];
-  const inactiveValidators = validators?.filter((v) => v.status === 'inactive') || [];
-  const slashedValidators = validators?.filter((v) => v.status === 'slashed') || [];
-
-  const totalVotingPower = activeValidators.reduce((sum, v) => sum + parseFloat(v.voting_power), 0);
+  const validators = result?.validators ?? [];
+  const activeValidators = validators.filter((v) => v.status === 'active');
+  const inactiveValidators = validators.filter((v) => v.status === 'inactive');
+  const slashedValidators = validators.filter((v) => v.status === 'slashed');
+  const jailedValidators = validators.filter((v) => v.status === 'jailed');
+  const totalStake = result?.totalStake ?? 0;
+  const currentRound = result?.currentRound ?? 0;
 
   return (
     <div className="flex h-screen bg-background">
@@ -72,147 +88,127 @@ export default function ValidatorsPage() {
             <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Inactive</span>
-                  <AlertCircle className="w-4 h-4 text-yellow-500" />
+                  <span className="text-foreground/60 text-sm">Slashed</span>
+                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
                 </div>
-                <p className="text-2xl font-semibold text-foreground">{inactiveValidators.length}</p>
+                <p className="text-2xl font-semibold text-foreground">
+                  {slashedValidators.length + inactiveValidators.length}
+                </p>
               </CardContent>
             </Card>
 
             <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Slashed</span>
+                  <span className="text-foreground/60 text-sm">Jailed</span>
                   <AlertTriangle className="w-4 h-4 text-red-500" />
                 </div>
-                <p className="text-2xl font-semibold text-foreground">{slashedValidators.length}</p>
+                <p className="text-2xl font-semibold text-foreground">{jailedValidators.length}</p>
               </CardContent>
             </Card>
 
             <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Total Voting Power</span>
+                  <span className="text-foreground/60 text-sm">Total Stake</span>
                   <Zap className="w-4 h-4 text-primary" />
                 </div>
-                <p className="text-xl font-semibold text-foreground">{totalVotingPower.toFixed(0)}</p>
+                <p className="text-xl font-semibold text-foreground">{totalStake}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Active Validators */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-foreground mb-4">Active Validators ({activeValidators.length})</h2>
-            {activeValidators.length > 0 ? (
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Voting Power</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Commission</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Slashing Events</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-foreground">{parseFloat(validator.voting_power).toFixed(0)}</td>
-                        <td className="py-3 px-4 text-right text-foreground">{(parseFloat(validator.commission) * 100).toFixed(2)}%</td>
-                        <td className="py-3 px-4 text-right">
-                          {validator.slashing_events > 0 ? (
-                            <span className="text-yellow-400">{validator.slashing_events}</span>
-                          ) : (
-                            <span className="text-green-400">0</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <Card className="bg-card/50">
-                <CardContent className="pt-6">
-                  <p className="text-foreground/60 text-sm">No active validators</p>
-                </CardContent>
-              </Card>
-            )}
+          {/* Current round indicator */}
+          <div className="mb-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4 text-blue-400" />
+            <span className="text-foreground/70">
+              Current consensus round: <strong className="text-foreground">{currentRound}</strong>
+              {' · '}
+              <strong className="text-foreground">{validators.length}</strong> validator
+              {validators.length === 1 ? '' : 's'} registered
+            </span>
           </div>
 
-          {/* Inactive Validators */}
-          {inactiveValidators.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-foreground mb-4">Inactive Validators ({inactiveValidators.length})</h2>
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Voting Power</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Commission</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inactiveValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors opacity-60">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-foreground">{parseFloat(validator.voting_power).toFixed(0)}</td>
-                        <td className="py-3 px-4 text-right text-foreground">{(parseFloat(validator.commission) * 100).toFixed(2)}%</td>
+          {/* Validators table */}
+          <Card className="bg-card/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Validators ({validators.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {validators.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-3 text-foreground/60 font-medium">Node ID</th>
+                        <th className="text-right py-3 px-3 text-foreground/60 font-medium">Stake</th>
+                        <th className="text-right py-3 px-3 text-foreground/60 font-medium">Slash Points</th>
+                        <th className="text-center py-3 px-3 text-foreground/60 font-medium">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Slashed Validators */}
-          {slashedValidators.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-4">Slashed Validators ({slashedValidators.length})</h2>
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Slashing Events</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {slashedValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors bg-red-500/10">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-red-400">{validator.slashing_events}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                    </thead>
+                    <tbody>
+                      {validators.map((v) => (
+                        <tr
+                          key={v.node_id}
+                          className={`border-b border-border/50 hover:bg-card/50 transition-colors ${
+                            v.is_jailed ? 'bg-red-500/10' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-3">
+                            <code className="text-xs font-mono text-primary">
+                              {v.node_id.slice(0, 24)}…
+                            </code>
+                          </td>
+                          <td className="py-3 px-3 text-right text-foreground">{v.stake}</td>
+                          <td className="py-3 px-3 text-right">
+                            {v.slash_points > 0 ? (
+                              <span className="text-yellow-400">{v.slash_points}</span>
+                            ) : (
+                              <span className="text-green-400">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+                                v.status,
+                              )}`}
+                            >
+                              {v.is_jailed && <ShieldOff className="w-3 h-3" />}
+                              {v.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-foreground/60 text-sm">
+                  No validators registered. The node registers itself as a validator candidate on
+                  startup — if you see this, the node may not have completed initialization.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
   );
+}
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'bg-green-500/20 text-green-300';
+    case 'slashed':
+      return 'bg-yellow-500/20 text-yellow-300';
+    case 'jailed':
+      return 'bg-red-500/20 text-red-300';
+    default:
+      return 'bg-gray-500/20 text-gray-300';
+  }
 }

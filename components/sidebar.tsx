@@ -15,6 +15,10 @@ import {
   Zap,
   Settings,
   LogOut,
+  Shield,
+  Fingerprint,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 
 const navItems = [
@@ -24,6 +28,10 @@ const navItems = [
   { name: 'Validators', href: '/validators', icon: Zap },
   { name: 'Economics', href: '/economics', icon: DollarSign },
   { name: 'Events', href: '/events', icon: Activity },
+  { name: 'Shards', href: '/shards', icon: Layers },
+  { name: 'Identity', href: '/identity', icon: Fingerprint },
+  { name: 'Ceremony', href: '/ceremony', icon: Sparkles },
+  { name: 'Admin', href: '/admin', icon: Shield },
 ];
 
 export function Sidebar() {

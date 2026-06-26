@@ -54,7 +54,7 @@ export default function Page() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <DashboardCard
                 title="Node Monitor"
-                description="Track node status, peers, and blockchain height"
+                description="Track node status, peers, and finalized height"
                 href="/monitor"
               />
               <DashboardCard
@@ -69,13 +69,33 @@ export default function Page() {
               />
               <DashboardCard
                 title="Economics"
-                description="Track balances, transfers, and token distribution"
+                description="Register DIDs, check balances, spend UBC"
                 href="/economics"
               />
               <DashboardCard
                 title="Events"
-                description="Explore network events and transactions"
+                description="Submit and explore consensus events"
                 href="/events"
+              />
+              <DashboardCard
+                title="Shards"
+                description="Submit operations to any domain shard"
+                href="/shards"
+              />
+              <DashboardCard
+                title="Identity"
+                description="DID management, biometric binding, recovery"
+                href="/identity"
+              />
+              <DashboardCard
+                title="Ceremony"
+                description="ZK trusted setup coordination and transcript"
+                href="/ceremony"
+              />
+              <DashboardCard
+                title="Admin"
+                description="Register DIDs, mint UBC, advance epochs"
+                href="/admin"
               />
               <DashboardCard
                 title="Configuration"
