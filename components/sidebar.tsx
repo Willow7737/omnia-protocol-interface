@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { useConfig } from '@/lib/config-context';
+import { useAuth } from '@/lib/auth-context';
 import { ConfigModal } from './config-modal';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import {
   Fingerprint,
   Layers,
   Sparkles,
+  LogIn,
 } from 'lucide-react';
 
 const navItems = [
@@ -36,13 +37,8 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { config, setConfig } = useConfig();
+  const { supabaseUser, did, signOut, isSupabaseConfigured } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
-
-  const handleLogout = () => {
-    setConfig({ endpoint: '', token: '' });
-    localStorage.removeItem('omnia-config');
-  };
 
   return (
     <>
@@ -58,6 +54,21 @@ export function Sidebar() {
             </div>
           </div>
         </div>
+
+        {/* User info */}
+        {supabaseUser && (
+          <div className="p-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-semibold">
+                {(supabaseUser.email ?? '?')[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground truncate">{supabaseUser.email}</p>
+                <p className="text-xs text-foreground/40 font-mono truncate">{did}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <nav className="flex-1 p-4 space-y-1 overflow-auto">
           {navItems.map((item) => {
@@ -90,15 +101,24 @@ export function Sidebar() {
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Disconnect
-          </Button>
+          {isSupabaseConfigured && supabaseUser ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => signOut()}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          ) : isSupabaseConfigured ? (
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </div>
 

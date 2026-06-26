@@ -1,8 +1,10 @@
 'use client';
 
 import { useConfig } from '@/lib/config-context';
+import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { Comments } from '@/components/comments';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Proposal } from '@/lib/api-client';
@@ -15,6 +17,7 @@ import { AlertCircle, Vote, TrendingUp } from 'lucide-react';
 
 export default function GovernancePage() {
   const { isConfigured, apiClient } = useConfig();
+  const { supabaseUser } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
   const [voting, setVoting] = useState<string | null>(null);
 
@@ -166,6 +169,7 @@ export default function GovernancePage() {
                     proposal={p}
                     onVote={handleVote}
                     voting={voting}
+                    canComment={!!supabaseUser}
                   />
                 ))
               ) : (
@@ -186,7 +190,7 @@ export default function GovernancePage() {
             <div className="space-y-4">
               {completedProposals.length > 0 ? (
                 completedProposals.map((p) => (
-                  <ProposalCard key={p.id} proposal={p} completed onVote={handleVote} voting={voting} />
+                  <ProposalCard key={p.id} proposal={p} completed onVote={handleVote} voting={voting} canComment={!!supabaseUser} />
                 ))
               ) : (
                 <Card className="bg-card/50">
@@ -209,11 +213,13 @@ function ProposalCard({
   completed,
   onVote,
   voting,
+  canComment,
 }: {
   proposal: Proposal;
   completed?: boolean;
   onVote: (id: string, vote: 'for' | 'against' | 'abstain') => void;
   voting: string | null;
+  canComment: boolean;
 }) {
   // Use the server-provided total_participation, falling back to the
   // sum of vote fields if absent (defensive — schema requires it).
@@ -314,6 +320,9 @@ function ProposalCard({
             </div>
           </div>
         )}
+
+        {/* Off-chain discussion (Supabase) */}
+        <Comments proposalId={proposal.id} canComment={canComment} />
       </CardContent>
     </Card>
   );

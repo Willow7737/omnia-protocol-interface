@@ -1,57 +1,20 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { APIClient } from './api-client';
+/**
+ * Compatibility layer — re-exports the auth context as the config context.
+ *
+ * Originally the app used a simple ConfigProvider that held {endpoint, token}
+ * in localStorage. With Supabase integration, auth is now handled by
+ * AuthProvider (Supabase session → node JWT minting). To avoid rewriting
+ * every page that calls useConfig(), this module re-exports the auth
+ * context under the old names.
+ *
+ * Existing pages that call useConfig() continue to work — they get
+ * { isConfigured, apiClient, config, setConfig } where:
+ *   - config = { endpoint, token } (derived from auth state)
+ *   - setConfig = setManualConfig (fallback for non-Supabase mode)
+ *
+ * New pages should use useAuth() directly to access the full auth state.
+ */
 
-interface Config {
-  endpoint: string;
-  token: string;
-}
-
-interface ConfigContextType {
-  config: Config | null;
-  setConfig: (config: Config) => void;
-  apiClient: APIClient | null;
-  isConfigured: boolean;
-}
-
-const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
-
-export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfigState] = useState<Config | null>(null);
-  const [apiClient, setApiClient] = useState<APIClient | null>(null);
-
-  // Load config from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('omnia-config');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setConfigState(parsed);
-        setApiClient(new APIClient(parsed.endpoint, parsed.token));
-      } catch (e) {
-        console.error('Failed to load config:', e);
-      }
-    }
-  }, []);
-
-  const setConfig = (newConfig: Config) => {
-    setConfigState(newConfig);
-    localStorage.setItem('omnia-config', JSON.stringify(newConfig));
-    setApiClient(new APIClient(newConfig.endpoint, newConfig.token));
-  };
-
-  return (
-    <ConfigContext.Provider value={{ config, setConfig, apiClient, isConfigured: !!config }}>
-      {children}
-    </ConfigContext.Provider>
-  );
-}
-
-export function useConfig() {
-  const context = useContext(ConfigContext);
-  if (context === undefined) {
-    throw new Error('useConfig must be used within ConfigProvider');
-  }
-  return context;
-}
+export { AuthProvider as ConfigProvider, useAuth as useConfig } from './auth-context';

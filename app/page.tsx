@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import { useConfig } from '@/lib/config-context';
 import { ConfigModal } from '@/components/config-modal';
 import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
-import { Network } from 'lucide-react';
+import { Network, LogIn, Settings, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Page() {
-  const { isConfigured } = useConfig();
+  const { isConfigured, isSupabaseConfigured, supabaseUser, did, isLoading } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -20,6 +22,16 @@ export default function Page() {
     return <div className="min-h-screen bg-background" />;
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground/60">Loading...</div>
+      </div>
+    );
+  }
+
+  // Not configured — show login or manual config
   if (!isConfigured) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
@@ -31,21 +43,58 @@ export default function Page() {
           <p className="text-foreground/60 mb-8">
             Connect to your Omnia node to access the complete monitoring, governance, and economics dashboard.
           </p>
-          <Button size="lg" onClick={() => setConfigOpen(true)}>
-            Connect to Node
-          </Button>
+
+          {isSupabaseConfigured ? (
+            <div className="space-y-3">
+              <Link href="/login">
+                <Button size="lg" className="w-full">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={() => setConfigOpen(true)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Manual Configuration
+              </Button>
+            </div>
+          ) : (
+            <Button size="lg" onClick={() => setConfigOpen(true)}>
+              Connect to Node
+            </Button>
+          )}
         </div>
         <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
       </div>
     );
   }
 
+  // Configured — show dashboard
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="p-8">
+            {/* Welcome banner */}
+            {supabaseUser && (
+              <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                  {(supabaseUser.email ?? '?')[0].toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">
+                    Signed in as <strong>{supabaseUser.email}</strong>
+                  </p>
+                  <p className="text-xs text-foreground/60 font-mono">{did}</p>
+                </div>
+              </div>
+            )}
+
             <h1 className="text-3xl font-bold mb-2 text-foreground">Welcome to Omnia Dashboard</h1>
             <p className="text-foreground/60 mb-8">
               Select a section from the sidebar to monitor your node and participate in governance.
@@ -59,7 +108,7 @@ export default function Page() {
               />
               <DashboardCard
                 title="Governance"
-                description="View and vote on active proposals"
+                description="View proposals, vote, and discuss"
                 href="/governance"
               />
               <DashboardCard
