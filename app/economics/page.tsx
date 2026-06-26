@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Balance, TransferRecord } from '@/lib/api-client';
+import { Balance, TransferRecord, ApiError, isNotFound, isForbidden } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,19 +16,22 @@ import {
   Info,
   ArrowRight,
   TrendingUp,
+  UserPlus,
+  Loader2,
 } from 'lucide-react';
 
 export default function EconomicsPage() {
   const { isConfigured, apiClient } = useConfig();
   const [configOpen, setConfigOpen] = useState(false);
-  const [did, setDid] = useState('did:omnia:0xExample');
+  const [did, setDid] = useState('');
   const [transferTo, setTransferTo] = useState('');
   const [transferAmount, setTransferAmount] = useState('1');
   const [transferring, setTransferring] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
-  const { data: balance, error: balanceError } = useSWR<Balance>(
+  const { data: balance, error: balanceError, mutate: mutateBalance } = useSWR<Balance>(
     isConfigured && did ? `balance-${did}` : null,
     async () => apiClient!.getBalance(did),
     { refreshInterval: 10000, revalidateOnFocus: false },
@@ -56,6 +59,26 @@ export default function EconomicsPage() {
     );
   }
 
+  const handleRegister = async () => {
+    if (!did) return;
+    setActionError('');
+    setActionSuccess('');
+    setRegistering(true);
+    try {
+      const result = await apiClient!.registerDid(did);
+      setActionSuccess(
+        result.status === 'processed'
+          ? `DID ${did} registered successfully. Balance lookup will now return 200.`
+          : `Registration response: ${result.status}`,
+      );
+      mutateBalance();
+    } catch (e) {
+      setActionError(String(e));
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const handleTransfer = async () => {
     setActionError('');
     setActionSuccess('');
@@ -75,8 +98,8 @@ export default function EconomicsPage() {
       setActionSuccess(
         `Spent ${result.amount} UBC from ${result.from_did}. New balance: ${result.new_balance}`,
       );
-      // Trigger SWR revalidation of both balance and transfer history.
       mutateTransfers();
+      mutateBalance();
     } catch (e) {
       setActionError(String(e));
     } finally {
@@ -84,8 +107,9 @@ export default function EconomicsPage() {
     }
   };
 
-  // Aggregate stats from the transfer history.
   const totalVolume = transfers?.reduce((sum, t) => sum + t.amount, 0) ?? 0;
+  const balanceErr = balanceError as ApiError | undefined;
+  const isNotRegistered = balanceErr && isNotFound(balanceErr);
 
   return (
     <div className="flex h-screen bg-background">
@@ -104,6 +128,9 @@ export default function EconomicsPage() {
               UBC tokens are <strong>soulbound</strong>: the &quot;transfer&quot; endpoint actually
               spends (burns) tokens from the sender&apos;s balance. The recipient does not receive
               them. Only successful spends are recorded in the history below.
+              <br />
+              <strong className="text-foreground">To get started:</strong> enter a DID above,
+              click <em>Register DID</em>, then look up its balance.
             </div>
           </div>
 
@@ -136,7 +163,7 @@ export default function EconomicsPage() {
                   <DollarSign className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-2xl font-semibold text-foreground">
-                  {balance?.balance ?? '...'}
+                  {balance?.balance ?? '—'}
                 </p>
               </CardContent>
             </Card>
@@ -148,33 +175,73 @@ export default function EconomicsPage() {
                   <DollarSign className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-2xl font-semibold text-foreground">
-                  {balance?.monthly_quota ?? '...'}
+                  {balance?.monthly_quota ?? '—'}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Balance lookup */}
+          {/* Balance lookup + register */}
           <Card className="bg-card/50 mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
-                Balance Lookup
+                Balance Lookup &amp; DID Registration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="did">DID</Label>
-                <Input
-                  id="did"
-                  placeholder="did:omnia:0x..."
-                  value={did}
-                  onChange={(e) => setDid(e.target.value)}
-                  className="mt-1"
-                />
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="did"
+                    placeholder="did:omnia:0x... (enter any unique DID you want to use)"
+                    value={did}
+                    onChange={(e) => setDid(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleRegister}
+                    disabled={registering || !did}
+                    variant="default"
+                  >
+                    {registering ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Registering...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Register DID
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Registration calls <code>POST /api/v1/shards/economics/operations</code> with{' '}
+                  <code>{'{operation: "register", params: {did}}'}</code>. Once registered, the
+                  DID gets a monthly UBC quota and balance lookups return 200.
+                </p>
               </div>
-              {balanceError && (
-                <p className="text-sm text-destructive">{String(balanceError)}</p>
+
+              {/* Balance result */}
+              {balanceErr && !isNotRegistered && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-destructive text-sm">
+                    {balanceErr.serverMessage
+                      ? `Error: ${balanceErr.serverMessage}`
+                      : String(balanceErr)}
+                  </p>
+                </div>
+              )}
+              {isNotRegistered && (
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <p className="text-yellow-300 text-sm">
+                    <strong>DID not registered.</strong> Click the <em>Register DID</em> button
+                    above to enroll this DID in the economics quota system.
+                  </p>
+                </div>
               )}
               {balance && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
@@ -314,7 +381,8 @@ export default function EconomicsPage() {
                 </div>
               ) : (
                 <p className="text-foreground/60 text-sm">
-                  No transfers recorded yet. Spend some UBC above to populate the history.
+                  No transfers recorded yet. Register a DID above, then spend some UBC to populate
+                  the history.
                 </p>
               )}
             </CardContent>

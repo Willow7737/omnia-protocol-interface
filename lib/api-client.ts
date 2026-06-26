@@ -200,6 +200,76 @@ export const ValidatorListSchema = z.object({
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// Ceremony (ZK trusted setup)
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Response from `GET /api/v1/ceremony/state`. */
+export const CeremonyStateSchema = z.object({
+  /** Current ceremony phase: "waiting", "collecting", "finalized", etc. */
+  phase: z.string(),
+  /** Number of contributions received so far. */
+  contribution_count: z.number(),
+  /** Minimum participants required to finalize. */
+  min_participants: z.number(),
+  /** Maximum participants allowed. */
+  max_participants: z.number(),
+  /** Hex-encoded SRS transcript hash (first 8 bytes). */
+  transcript_hash: z.string(),
+});
+
+/** A single contribution entry in the ceremony transcript. */
+export const CeremonyContributionSchema = z.object({
+  index: z.number(),
+  /** Hex-encoded hash of the contributor's public key or contribution. */
+  contributor_hash: z.string().optional(),
+  /** Hex-encoded hash of the SRS state after this contribution. */
+  transcript_hash: z.string().optional(),
+  /** Unix timestamp (seconds) when the contribution was received. */
+  timestamp: z.number().optional(),
+});
+
+/** Response from `GET /api/v1/ceremony/transcript`. */
+export const CeremonyTranscriptSchema = z.object({
+  contributions: z.array(CeremonyContributionSchema),
+  count: z.number(),
+  finalized: z.boolean().optional(),
+});
+
+/** Response from `POST /api/v1/ceremony/contribute`. */
+export const ContributeResultSchema = z.object({
+  contribution_index: z.number(),
+  transcript_hash: z.string(),
+  message: z.string(),
+});
+
+/** Response from `POST /api/v1/ceremony/finalize`. */
+export const FinalizeResultSchema = z.object({
+  status: z.string().optional(),
+  message: z.string().optional(),
+  final_hash: z.string().optional(),
+}).catchall(z.unknown());
+
+// ────────────────────────────────────────────────────────────────────────────
+// Shard operations (universal)
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Request body for `POST /api/v1/shards/:shard_id/operations`. */
+export const ShardOperationRequestSchema = z.object({
+  operation: z.string(),
+  params: z.record(z.string(), z.unknown()),
+});
+
+/** Response from `POST /api/v1/shards/:shard_id/operations`. */
+export const ShardOperationResultSchema = z.object({
+  status: z.string(),
+  shard_id: z.string().optional(),
+  operation: z.string().optional(),
+  note: z.string().optional(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+}).catchall(z.unknown());
+
+// ────────────────────────────────────────────────────────────────────────────
 // Public health endpoints
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -224,10 +294,60 @@ export type TransferRecord = z.infer<typeof TransferRecordSchema>;
 export type Validator = z.infer<typeof ValidatorSchema>;
 export type CreateProposalResult = z.infer<typeof CreateProposalResultSchema>;
 export type CastVoteResult = z.infer<typeof CastVoteResultSchema>;
+export type CeremonyState = z.infer<typeof CeremonyStateSchema>;
+export type CeremonyContribution = z.infer<typeof CeremonyContributionSchema>;
+export type CeremonyTranscript = z.infer<typeof CeremonyTranscriptSchema>;
+export type ContributeResult = z.infer<typeof ContributeResultSchema>;
+export type FinalizeResult = z.infer<typeof FinalizeResultSchema>;
+export type ShardOperationResult = z.infer<typeof ShardOperationResultSchema>;
 
 // ────────────────────────────────────────────────────────────────────────────
 // API Client
 // ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Structured API error with HTTP status, code category, and the server's
+ * error message (if any). Thrown by `APIClient.request()` instead of a
+ * plain `Error` so callers can branch on `err.kind` to render appropriate
+ * inline UI (e.g. "DID not registered → click Register" for NOT_FOUND).
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly kind: 'network' | 'auth' | 'forbidden' | 'not_found' | 'not_implemented' | 'server' | 'unknown';
+  readonly serverMessage: string | undefined;
+
+  constructor(status: number, statusText: string, serverMessage?: string) {
+    const detail = serverMessage ? `: ${serverMessage}` : '';
+    super(`API Error: ${status} ${statusText}${detail}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.serverMessage = serverMessage;
+    this.kind =
+      status === 0 ? 'network' :
+      status === 401 ? 'auth' :
+      status === 403 ? 'forbidden' :
+      status === 404 ? 'not_found' :
+      status === 405 || status === 501 ? 'not_implemented' :
+      status >= 500 ? 'server' :
+      'unknown';
+  }
+}
+
+/**
+ * Convenience predicate — true if the error is a 404 from the node.
+ * Useful for showing "not registered, click here to register" UI.
+ */
+export function isNotFound(err: unknown): boolean {
+  return err instanceof ApiError && err.kind === 'not_found';
+}
+
+/**
+ * Convenience predicate — true if the error indicates the caller is not
+ * in `OMNIA_AUTHORIZED_CALLERS` (admin operations only).
+ */
+export function isForbidden(err: unknown): boolean {
+  return err instanceof ApiError && err.kind === 'forbidden';
+}
 
 /**
  * Thin REST client for the Omnia node HTTP API.
@@ -267,25 +387,31 @@ export class APIClient {
     init?: RequestInit,
   ): Promise<T> {
     const url = `${this.endpoint}${path}`;
-    const response = await fetch(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        ...(init?.headers || {}),
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          ...(init?.headers || {}),
+        },
+      });
+    } catch (e) {
+      // Network-level failure (DNS, connection refused, CORS, etc.)
+      throw new ApiError(0, 'Network error', e instanceof Error ? e.message : String(e));
+    }
 
     if (!response.ok) {
       // Try to extract a structured error message from the node's JSON body.
-      let detail = '';
+      let serverMessage: string | undefined;
       try {
         const body = await response.json();
-        detail = body?.error ? `: ${body.error}` : '';
+        serverMessage = body?.error ?? undefined;
       } catch {
         /* response had no JSON body — fall through to status text */
       }
-      throw new Error(`API Error: ${response.status} ${response.statusText}${detail}`);
+      throw new ApiError(response.status, response.statusText, serverMessage);
     }
 
     const data = await response.json();
@@ -450,5 +576,113 @@ export class APIClient {
       totalStake: result.total_stake,
       currentRound: result.current_round,
     };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Ceremony (ZK trusted setup)
+  // ──────────────────────────────────────────────────────────────────────
+
+  /** `GET /api/v1/ceremony/state` — current phase, contribution count, transcript hash. */
+  async getCeremonyState(): Promise<CeremonyState> {
+    return this.request('/api/v1/ceremony/state', CeremonyStateSchema);
+  }
+
+  /** `GET /api/v1/ceremony/transcript` — list of contributions. */
+  async getCeremonyTranscript(): Promise<CeremonyTranscript> {
+    return this.request('/api/v1/ceremony/transcript', CeremonyTranscriptSchema);
+  }
+
+  /**
+   * `POST /api/v1/ceremony/contribute` — submit a contribution.
+   *
+   * The contribution format is defined by the node's `omnia_adapters::setup::Contribution`
+   * type. For non-ZK builds, the node returns 501 and this method throws
+   * an `ApiError` with `kind === 'not_implemented'`.
+   */
+  async contributeToCeremony(contribution: unknown): Promise<ContributeResult> {
+    return this.request('/api/v1/ceremony/contribute', ContributeResultSchema, {
+      method: 'POST',
+      body: JSON.stringify({ contribution }),
+    });
+  }
+
+  /** `POST /api/v1/ceremony/finalize` — finalize the ceremony (admin). */
+  async finalizeCeremony(): Promise<FinalizeResult> {
+    return this.request('/api/v1/ceremony/finalize', FinalizeResultSchema, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Shard operations (universal)
+  // ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * `POST /api/v1/shards/:shard_id/operations` — submit an operation to any shard.
+   *
+   * Privileged operations (`mint`, `advance_epoch`) require the caller's JWT
+   * `sub` to appear in the node's `OMNIA_AUTHORIZED_CALLERS` env var. Other
+   * operations (`register`, `spend`) only require a valid JWT.
+   *
+   * Supported `shard_id` values: `economics`, `identity`, `biological`,
+   * `computational`, `physical`, `financial`. Only `economics` is fully
+   * implemented on the node — others return 501 with a "not yet implemented"
+   * message.
+   */
+  async submitShardOperation(
+    shardId: string,
+    operation: string,
+    params: Record<string, unknown> = {},
+  ): Promise<ShardOperationResult> {
+    return this.request(
+      `/api/v1/shards/${encodeURIComponent(shardId)}/operations`,
+      ShardOperationResultSchema,
+      {
+        method: 'POST',
+        body: JSON.stringify({ operation, params }),
+      },
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Admin convenience wrappers (all hit the shards endpoint)
+  // ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * Register a DID in the economics quota system.
+   *
+   * Wrapper around `submitShardOperation('economics', 'register', {did})`.
+   * After registration, `getBalance(did)` will return 200 instead of 404.
+   */
+  async registerDid(did: string): Promise<ShardOperationResult> {
+    return this.submitShardOperation('economics', 'register', { did });
+  }
+
+  /**
+   * Mint UBC to a DID. **Privileged** — requires the caller's JWT `sub` to
+   * be listed in `OMNIA_AUTHORIZED_CALLERS` on the node.
+   */
+  async mintUbc(did: string, amount: number): Promise<ShardOperationResult> {
+    return this.submitShardOperation('economics', 'mint', { did, amount });
+  }
+
+  /**
+   * Advance the economics epoch. **Privileged** — requires the caller's
+   * JWT `sub` to be listed in `OMNIA_AUTHORIZED_CALLERS` on the node.
+   */
+  async advanceEpoch(): Promise<ShardOperationResult> {
+    return this.submitShardOperation('economics', 'advance_epoch', {});
+  }
+
+  /**
+   * Spend UBC from a DID via the shards endpoint (alternative to
+   * `transferUbic` which goes through `/api/v1/economics/transfer`).
+   *
+   * This wrapper does NOT record the spend in the transfer history log
+   * (only `transferUbic` does). Prefer `transferUbic` for UI flows.
+   */
+  async spendUbc(did: string, amount: number): Promise<ShardOperationResult> {
+    return this.submitShardOperation('economics', 'spend', { did, amount });
   }
 }
