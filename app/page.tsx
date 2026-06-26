@@ -142,6 +142,21 @@ export default function Page() {
                 href="/ceremony"
               />
               <DashboardCard
+                title="Analytics"
+                description="UBC volume, events per hour, top senders"
+                href="/analytics"
+              />
+              <DashboardCard
+                title="Notifications"
+                description="Slash events, proposal changes, ceremony milestones"
+                href="/notifications"
+              />
+              <DashboardCard
+                title="Profile"
+                description="Your DID, display name, and transfer history"
+                href="/profile"
+              />
+              <DashboardCard
                 title="Admin"
                 description="Register DIDs, mint UBC, advance epochs"
                 href="/admin"

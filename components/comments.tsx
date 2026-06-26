@@ -5,7 +5,9 @@ import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, MessageSquare, Send, User } from 'lucide-react';
+import { Loader2, MessageSquare, Send, User, Radio } from 'lucide-react';
+import { createClient } from '@/lib/supabase-browser';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Comment {
   id: string;
@@ -33,17 +35,77 @@ const commentsFetcher = async (url: string): Promise<Comment[]> => {
  * Proposal comments section — fetches and displays off-chain discussion
  * from Supabase. Comments are stored in the `proposal_comments` table
  * and are fully Supabase-owned (the node has no concept of comments).
+ *
+ * Real-time updates: subscribes to the Supabase Realtime channel for
+ * the proposal_comments table, filtered by proposal_id. New comments
+ * appear instantly without polling. Falls back to SWR polling (30s) as
+ * a safety net in case Realtime disconnects.
  */
 export function Comments({ proposalId, canComment }: CommentsProps) {
   const { data: comments, mutate } = useSWR<Comment[]>(
     `/api/comments?proposalId=${encodeURIComponent(proposalId)}`,
     commentsFetcher,
-    { refreshInterval: 30000 },
+    { refreshInterval: 30000, revalidateOnFocus: false },
   );
 
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+
+  // ── Realtime subscription ───────────────────────────────────────────
+  // Listens for INSERT events on proposal_comments where proposal_id matches.
+  // When a new comment arrives, we use SWR's `mutate` to revalidate the
+  // cache (rather than appending directly) so the data path is consistent.
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null;
+
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel(`proposal_comments:${proposalId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'proposal_comments',
+            filter: `proposal_id=eq.${proposalId}`,
+          },
+          (_payload) => {
+            // Revalidate the SWR cache — fetches the latest comments.
+            mutate();
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'proposal_comments',
+            filter: `proposal_id=eq.${proposalId}`,
+          },
+          () => mutate(),
+        )
+        .subscribe((status) => {
+          setIsRealtimeConnected(status === 'SUBSCRIBED');
+        });
+    } catch (e) {
+      // Supabase not configured — silently fall back to polling.
+      console.warn('Realtime subscription failed, falling back to polling:', e);
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(channel);
+        } catch {
+          // ignore — client may already be torn down
+        }
+      }
+    };
+  }, [proposalId, mutate]);
 
   const handleSubmit = useCallback(async () => {
     if (!body.trim()) return;
@@ -60,6 +122,8 @@ export function Comments({ proposalId, canComment }: CommentsProps) {
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
       setBody('');
+      // The Realtime subscription will fire and call mutate() automatically
+      // — but call it explicitly too in case Realtime is delayed.
       mutate();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -75,6 +139,12 @@ export function Comments({ proposalId, canComment }: CommentsProps) {
         <span className="text-sm font-medium text-foreground/60">
           Discussion ({comments?.length ?? 0})
         </span>
+        {isRealtimeConnected && (
+          <span className="ml-auto inline-flex items-center gap-1 text-xs text-green-400">
+            <Radio className="w-3 h-3" />
+            Live
+          </span>
+        )}
       </div>
 
       {/* Existing comments */}
@@ -83,7 +153,7 @@ export function Comments({ proposalId, canComment }: CommentsProps) {
           comments.map((c) => (
             <div
               key={c.id}
-              className="p-3 bg-background/50 rounded-lg border border-border/30"
+              className="p-3 bg-background/50 rounded-lg border border-border/30 animate-in fade-in slide-in-from-bottom-1 duration-300"
             >
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
@@ -140,7 +210,7 @@ export function Comments({ proposalId, canComment }: CommentsProps) {
           {error && <p className="text-xs text-destructive">{error}</p>}
           <p className="text-xs text-foreground/40">
             Press Enter to send. Max 2000 characters. Comments are stored in Supabase
-            (off-chain) and visible to everyone.
+            (off-chain) and visible to everyone. New comments appear in real-time.
           </p>
         </div>
       ) : (

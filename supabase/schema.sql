@@ -24,10 +24,14 @@ create extension if not exists pgcrypto;
 -- Maps a Supabase auth user to their Omnia DID.
 -- One DID per user (enforced by primary key on user_id and unique on did).
 create table if not exists public.user_dids (
-  user_id    uuid primary key references auth.users(id) on delete cascade,
-  did        text unique not null,
-  created_at timestamptz not null default now()
+  user_id      uuid primary key references auth.users(id) on delete cascade,
+  did          text unique not null,
+  display_name text,                          -- user-chosen name shown in UI (nullable)
+  created_at   timestamptz not null default now()
 );
+
+-- Backfill display_name column for existing installs (no-op on fresh installs).
+alter table public.user_dids add column if not exists display_name text;
 
 -- Mirror of the node's transfer history (for charts + persistent audit).
 -- The node's in-memory log is capped at 10k and wiped on restart; this
@@ -139,9 +143,72 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ════════════════════════════════════════════════════════════════════════
+-- Notifications
+-- ════════════════════════════════════════════════════════════════════════
+-- In-app notifications for slash events, proposal status changes, ceremony
+-- milestones, and other network events. Inserted by the sync worker (service
+-- role) when it detects a state change on the node, or by triggers on
+-- proposal_comments (e.g. "@mentions"). Read by the user via the
+-- notification bell in the sidebar.
+
+create table if not exists public.notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade, -- null = broadcast
+  did         text,                          -- DID affected by the notification (nullable)
+  kind        text not null,                 -- 'slash' | 'proposal' | 'ceremony' | 'transfer' | 'info'
+  title       text not null,
+  body        text,
+  link        text,                          -- relative URL to navigate to (e.g. '/governance')
+  read_at     timestamptz,                   -- null = unread
+  created_at  timestamptz not null default now()
+);
+create index if not exists notifications_user_id_created_at_idx on public.notifications (user_id, created_at desc);
+create index if not exists notifications_kind_idx               on public.notifications (kind);
+create index if not exists notifications_unread_idx              on public.notifications (user_id) where read_at is null;
+
+alter table public.notifications enable row level security;
+
+-- Users can read only their own notifications (or broadcasts where user_id is null).
+drop policy if exists "Users can read own notifications" on public.notifications;
+create policy "Users can read own notifications"
+  on public.notifications for select
+  using (user_id is null or auth.uid() = user_id);
+
+-- Users can mark their own notifications as read.
+drop policy if exists "Users can update own notifications" on public.notifications;
+create policy "Users can update own notifications"
+  on public.notifications for update
+  using (auth.uid() = user_id);
+
+-- Service role (sync worker) can insert — bypasses RLS.
+
+-- ════════════════════════════════════════════════════════════════════════
+-- Sync state (worker scratch space)
+-- ════════════════════════════════════════════════════════════════════════
+-- Key-value store the sync worker uses to track state between runs
+-- (e.g. previous slash point counts, so it can detect increases and
+-- emit notifications). Written by the service role only — no RLS needed
+-- because the table is never queried from the browser.
+
+create table if not exists public.sync_state (
+  key         text primary key,
+  value       jsonb not null,
+  updated_at  timestamptz not null default now()
+);
+
+-- ════════════════════════════════════════════════════════════════════════
+-- Realtime publication for notifications + comments
+-- ════════════════════════════════════════════════════════════════════════
+-- Enable Realtime on the tables we want to subscribe to from the browser.
+
+alter publication supabase_realtime add table public.notifications;
+alter publication supabase_realtime add table public.proposal_comments;
+
+-- ════════════════════════════════════════════════════════════════════════
 -- Done. Verify with:
 --   select * from public.user_dids;
 --   select * from public.transfer_log;
 --   select * from public.event_log;
 --   select * from public.proposal_comments;
+--   select * from public.notifications;
 -- ════════════════════════════════════════════════════════════════════════

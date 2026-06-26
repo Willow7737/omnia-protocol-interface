@@ -1,19 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Network, Mail, ArrowRight, Info, LogIn } from 'lucide-react';
+import { Network, Mail, ArrowRight, Info, LogIn, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
-  const { isSupabaseConfigured, signInWithGitHub, signInWithGoogle, signInWithEmail } = useAuth();
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
+  const { isSupabaseConfigured, signInWithGitHub, signInWithGoogle, signInWithEmail, isAwaitingEmail, stopEmailAwait } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState<'github' | 'google' | 'email' | null>(null);
+
+  // Show error if callback failed
+  const callbackError = searchParams.get('error');
+
+  // When isAwaitingEmail flips true, show the "check your email" UI.
+  // When it flips false (session detected or user cancelled), hide it.
+  useEffect(() => {
+    if (isAwaitingEmail) setEmailSent(true);
+  }, [isAwaitingEmail]);
 
   if (!isSupabaseConfigured) {
     // Supabase not configured — show instructions
@@ -127,9 +145,35 @@ export default function LoginPage() {
 
         {/* Email magic link */}
         {emailSent ? (
-          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-300">
-            <Info className="w-4 h-4 inline mr-2" />
-            Check your email for a magic link from Supabase.
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm">
+            <div className="flex items-center gap-2 text-blue-300 mb-2">
+              {isAwaitingEmail ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Info className="w-4 h-4" />
+              )}
+              <span className="font-medium">
+                {isAwaitingEmail ? 'Waiting for confirmation…' : 'Magic link sent'}
+              </span>
+            </div>
+            <p className="text-foreground/70 text-xs mb-3">
+              Check your email ({email}) and click the magic link. This page will
+              automatically detect your sign-in within a few seconds of you clicking
+              the link — no refresh needed.
+            </p>
+            {isAwaitingEmail && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  stopEmailAwait();
+                  setEmailSent(false);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -153,6 +197,19 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 mr-2" />
               {loading === 'email' ? 'Sending...' : 'Send Magic Link'}
             </Button>
+          </div>
+        )}
+
+        {/* Callback error */}
+        {callbackError && (
+          <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>
+              Sign-in failed: {callbackError}. Check your Supabase project&apos;s
+              redirect URL settings — make sure{' '}
+              <code>{typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback</code>{' '}
+              is in the allowed list.
+            </span>
           </div>
         )}
 

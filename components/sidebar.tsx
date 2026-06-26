@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ConfigModal } from './config-modal';
+import { NotificationBell } from './notifications/notification-bell';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
@@ -19,6 +20,9 @@ import {
   Fingerprint,
   Layers,
   Sparkles,
+  BarChart3,
+  Bell,
+  User as UserIcon,
   LogIn,
 } from 'lucide-react';
 
@@ -32,6 +36,9 @@ const navItems = [
   { name: 'Shards', href: '/shards', icon: Layers },
   { name: 'Identity', href: '/identity', icon: Fingerprint },
   { name: 'Ceremony', href: '/ceremony', icon: Sparkles },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Notifications', href: '/notifications', icon: Bell },
+  { name: 'Profile', href: '/profile', icon: UserIcon },
   { name: 'Admin', href: '/admin', icon: Shield },
 ];
 
@@ -55,7 +62,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* User info */}
+        {/* User info + notifications */}
         {supabaseUser && (
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
@@ -66,6 +73,7 @@ export function Sidebar() {
                 <p className="text-sm text-foreground truncate">{supabaseUser.email}</p>
                 <p className="text-xs text-foreground/40 font-mono truncate">{did}</p>
               </div>
+              <NotificationBell />
             </div>
           </div>
         )}
