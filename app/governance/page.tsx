@@ -5,22 +5,29 @@ import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Proposal } from '@/lib/api-client';
+import { CreateProposalResult } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Vote, TrendingUp } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, Vote, Info } from 'lucide-react';
 
 export default function GovernancePage() {
   const { isConfigured, apiClient } = useConfig();
   const [configOpen, setConfigOpen] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState<string | null>(null);
   const [voting, setVoting] = useState<string | null>(null);
 
-  const { data: proposals, error: proposalsError, mutate } = useSWR<Proposal[]>(
+  // New proposal form state
+  const [newProposalId, setNewProposalId] = useState('');
+  const [newProposalDesc, setNewProposalDesc] = useState('');
+  const [newProposalExpiry, setNewProposalExpiry] = useState('100');
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const { data: proposals, error: proposalsError, mutate } = useSWR<CreateProposalResult[]>(
     isConfigured ? 'governance-proposals' : null,
     async () => apiClient!.getProposals(),
-    { refreshInterval: 10000, revalidateOnFocus: false }
+    { refreshInterval: 10000, revalidateOnFocus: false },
   );
 
   if (!isConfigured) {
@@ -39,10 +46,36 @@ export default function GovernancePage() {
     );
   }
 
-  const handleVote = async (proposalId: string, vote: 'yes' | 'no' | 'abstain') => {
+  const handleCreate = async () => {
+    setFormError('');
+    if (!newProposalId.trim() || !newProposalDesc.trim()) {
+      setFormError('Proposal ID and description are required');
+      return;
+    }
+    const expiry = parseInt(newProposalExpiry, 10);
+    if (isNaN(expiry) || expiry <= 0) {
+      setFormError('Expiry epoch must be a positive integer');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await apiClient!.createProposal(newProposalId, newProposalDesc, expiry);
+      setNewProposalId('');
+      setNewProposalDesc('');
+      setNewProposalExpiry('100');
+      mutate();
+    } catch (e) {
+      setFormError(String(e));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleVote = async (proposalId: string, choice: 'for' | 'against' | 'abstain') => {
     setVoting(proposalId);
     try {
-      await apiClient!.voteOnProposal(proposalId, vote);
+      await apiClient!.voteOnProposal(proposalId, choice);
       mutate();
     } catch (error) {
       console.error('Vote failed:', error);
@@ -51,16 +84,13 @@ export default function GovernancePage() {
     }
   };
 
-  const activeProposals = proposals?.filter((p) => p.status === 'voting' || p.status === 'pending') || [];
-  const completedProposals = proposals?.filter((p) => p.status === 'passed' || p.status === 'failed' || p.status === 'executed') || [];
-
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <div className="border-b border-border px-8 py-6">
           <h1 className="text-3xl font-bold text-foreground">Governance</h1>
-          <p className="text-foreground/60">Active proposals and voting</p>
+          <p className="text-foreground/60">Create proposals and cast votes</p>
         </div>
 
         <div className="flex-1 overflow-auto p-8">
@@ -70,32 +100,116 @@ export default function GovernancePage() {
             </div>
           )}
 
-          {/* Active Proposals */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-foreground mb-4">Active Proposals ({activeProposals.length})</h2>
-            <div className="space-y-4">
-              {activeProposals.length > 0 ? (
-                activeProposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} onVote={handleVote} voting={voting} />)
-              ) : (
-                <Card className="bg-card/50">
-                  <CardContent className="pt-6">
-                    <p className="text-foreground/60 text-sm">No active proposals</p>
-                  </CardContent>
-                </Card>
-              )}
+          {/* Info banner */}
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-foreground/70">
+              The node currently exposes proposal <strong>creation</strong> and{' '}
+              <strong>voting</strong> endpoints, but not yet a list endpoint. After creating a
+              proposal, record its ID — the list below will be empty until the node exposes{' '}
+              <code className="text-xs">GET /api/v1/governance/proposals</code>.
             </div>
           </div>
 
-          {/* Completed Proposals */}
+          {/* Create proposal */}
+          <Card className="bg-card/50 mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Vote className="w-5 h-5" />
+                Create Proposal
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="proposal-id">Proposal ID</Label>
+                <Input
+                  id="proposal-id"
+                  placeholder="e.g. proposal-1"
+                  value={newProposalId}
+                  onChange={(e) => setNewProposalId(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="proposal-desc">Description</Label>
+                <Input
+                  id="proposal-desc"
+                  placeholder="Short description of the proposal"
+                  value={newProposalDesc}
+                  onChange={(e) => setNewProposalDesc(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="proposal-expiry">Expires at Epoch</Label>
+                <Input
+                  id="proposal-expiry"
+                  type="number"
+                  placeholder="100"
+                  value={newProposalExpiry}
+                  onChange={(e) => setNewProposalExpiry(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              {formError && <p className="text-sm text-destructive">{formError}</p>}
+              <Button onClick={handleCreate} disabled={creating}>
+                {creating ? 'Creating...' : 'Create Proposal'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Proposals list */}
           <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">Completed Proposals ({completedProposals.length})</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">
+              Proposals ({proposals?.length ?? 0})
+            </h2>
             <div className="space-y-4">
-              {completedProposals.length > 0 ? (
-                completedProposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} completed onVote={handleVote} voting={voting} />)
+              {proposals && proposals.length > 0 ? (
+                proposals.map((p) => (
+                  <Card key={p.id} className="bg-card/50">
+                    <CardHeader>
+                      <CardTitle className="text-lg">{p.id}</CardTitle>
+                      <p className="text-sm text-foreground/60">
+                        Status: {p.status} · Created at epoch {p.created_at_epoch} · Expires at
+                        epoch {p.expires_at_epoch}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={voting === p.id}
+                          onClick={() => handleVote(p.id, 'for')}
+                        >
+                          {voting === p.id ? 'Voting...' : 'Vote For'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={voting === p.id}
+                          onClick={() => handleVote(p.id, 'against')}
+                        >
+                          {voting === p.id ? 'Voting...' : 'Vote Against'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={voting === p.id}
+                          onClick={() => handleVote(p.id, 'abstain')}
+                        >
+                          {voting === p.id ? 'Voting...' : 'Abstain'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               ) : (
                 <Card className="bg-card/50">
                   <CardContent className="pt-6">
-                    <p className="text-foreground/60 text-sm">No completed proposals</p>
+                    <p className="text-foreground/60 text-sm">
+                      No proposals found. Create one above to get started.
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -106,130 +220,4 @@ export default function GovernancePage() {
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
   );
-}
-
-function ProposalCard({
-  proposal,
-  completed,
-  onVote,
-  voting,
-}: {
-  proposal: Proposal;
-  completed?: boolean;
-  onVote: (id: string, vote: 'yes' | 'no' | 'abstain') => void;
-  voting: string | null;
-}) {
-  const total = proposal.yes_votes + proposal.no_votes + proposal.abstain_votes;
-  const yesPercent = total > 0 ? (proposal.yes_votes / total) * 100 : 0;
-  const noPercent = total > 0 ? (proposal.no_votes / total) * 100 : 0;
-  const abstainPercent = total > 0 ? (proposal.abstain_votes / total) * 100 : 0;
-
-  return (
-    <Card className="bg-card/50 hover:bg-card/70 transition-colors">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{proposal.title}</CardTitle>
-            <p className="text-sm text-foreground/60 mb-2">{proposal.description}</p>
-            <div className="flex items-center gap-4 text-xs text-foreground/50">
-              <span>By {proposal.proposer.slice(0, 10)}...</span>
-              <span>{new Date(proposal.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-          <div className={`px-3 py-1 rounded text-sm font-medium whitespace-nowrap ${getStatusColor(proposal.status)}`}>
-            {proposal.status}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Vote Results */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-foreground/60">Total Votes: {total}</span>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-green-400">Yes</span>
-              <span className="text-sm text-foreground/60">{proposal.yes_votes} ({yesPercent.toFixed(1)}%)</span>
-            </div>
-            <Progress value={yesPercent} className="h-2" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-red-400">No</span>
-              <span className="text-sm text-foreground/60">{proposal.no_votes} ({noPercent.toFixed(1)}%)</span>
-            </div>
-            <Progress value={noPercent} className="h-2" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-yellow-400">Abstain</span>
-              <span className="text-sm text-foreground/60">{proposal.abstain_votes} ({abstainPercent.toFixed(1)}%)</span>
-            </div>
-            <Progress value={abstainPercent} className="h-2" />
-          </div>
-        </div>
-
-        {/* Voting deadline */}
-        {!completed && (
-          <div className="pt-2 border-t border-border/50">
-            <p className="text-xs text-foreground/60 mb-3">
-              Deadline: {new Date(proposal.deadline).toLocaleString()}
-            </p>
-
-            {/* Vote buttons */}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="default"
-                className="flex-1"
-                disabled={voting === proposal.id}
-                onClick={() => onVote(proposal.id, 'yes')}
-              >
-                {voting === proposal.id ? 'Voting...' : 'Vote Yes'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                disabled={voting === proposal.id}
-                onClick={() => onVote(proposal.id, 'no')}
-              >
-                {voting === proposal.id ? 'Voting...' : 'Vote No'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                disabled={voting === proposal.id}
-                onClick={() => onVote(proposal.id, 'abstain')}
-              >
-                {voting === proposal.id ? 'Voting...' : 'Abstain'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'voting':
-      return 'bg-blue-500/20 text-blue-300';
-    case 'pending':
-      return 'bg-yellow-500/20 text-yellow-300';
-    case 'passed':
-      return 'bg-green-500/20 text-green-300';
-    case 'executed':
-      return 'bg-green-500/20 text-green-300';
-    case 'failed':
-      return 'bg-red-500/20 text-red-300';
-    default:
-      return 'bg-gray-500/20 text-gray-300';
-  }
 }

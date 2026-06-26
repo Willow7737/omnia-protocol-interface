@@ -5,18 +5,26 @@ import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Validator } from '@/lib/api-client';
+import { NodeInfo } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertCircle, Info, Zap } from 'lucide-react';
 
+/**
+ * Validators page.
+ *
+ * The node does not yet expose a list-validators endpoint, so this page
+ * shows the node's own identity (derived from /api/v1/node/info) and a
+ * notice that the validator list endpoint is pending. When the node
+ * exposes `GET /api/v1/validators`, swap the SWR key + schema.
+ */
 export default function ValidatorsPage() {
   const { isConfigured, apiClient } = useConfig();
   const [configOpen, setConfigOpen] = useState(false);
 
-  const { data: validators, error: validatorsError } = useSWR<Validator[]>(
-    isConfigured ? 'validators-list' : null,
-    async () => apiClient!.getValidators(),
-    { refreshInterval: 15000, revalidateOnFocus: false }
+  const { data: nodeInfo, error: nodeError } = useSWR<NodeInfo>(
+    isConfigured ? 'validators-node-info' : null,
+    async () => apiClient!.getNodeInfo(),
+    { refreshInterval: 15000, revalidateOnFocus: false },
   );
 
   if (!isConfigured) {
@@ -35,12 +43,6 @@ export default function ValidatorsPage() {
     );
   }
 
-  const activeValidators = validators?.filter((v) => v.status === 'active') || [];
-  const inactiveValidators = validators?.filter((v) => v.status === 'inactive') || [];
-  const slashedValidators = validators?.filter((v) => v.status === 'slashed') || [];
-
-  const totalVotingPower = activeValidators.reduce((sum, v) => sum + parseFloat(v.voting_power), 0);
-
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -51,165 +53,101 @@ export default function ValidatorsPage() {
         </div>
 
         <div className="flex-1 overflow-auto p-8">
-          {validatorsError && (
+          {nodeError && (
             <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(validatorsError)}</p>
+              <p className="text-destructive text-sm">{String(nodeError)}</p>
             </div>
           )}
+
+          {/* Info banner */}
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-foreground/70">
+              The node does not yet expose a list-validators endpoint. Showing the local node&apos;s
+              identity below. When <code className="text-xs">GET /api/v1/validators</code> is added,
+              this page will list every validator in the network with moniker, voting power,
+              commission, and slashing events.
+            </div>
+          </div>
 
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-card/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Active</span>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-semibold text-foreground">{activeValidators.length}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Inactive</span>
-                  <AlertCircle className="w-4 h-4 text-yellow-500" />
-                </div>
-                <p className="text-2xl font-semibold text-foreground">{inactiveValidators.length}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Slashed</span>
-                  <AlertTriangle className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-semibold text-foreground">{slashedValidators.length}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/60 text-sm">Total Voting Power</span>
+                  <span className="text-foreground/60 text-sm">This Node</span>
                   <Zap className="w-4 h-4 text-primary" />
                 </div>
-                <p className="text-xl font-semibold text-foreground">{totalVotingPower.toFixed(0)}</p>
+                <p className="text-xl font-semibold text-foreground">
+                  {nodeInfo?.node_id ?? '...'}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Node Number</span>
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-xl font-semibold text-foreground">
+                  {nodeInfo?.node_id_num ?? '...'}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Protocol Version</span>
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-xl font-semibold text-foreground">
+                  {nodeInfo?.protocol_version ?? '...'}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-foreground/60 text-sm">Connected Peers</span>
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-xl font-semibold text-foreground">
+                  {nodeInfo?.peers ?? '...'}
+                </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Active Validators */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-foreground mb-4">Active Validators ({activeValidators.length})</h2>
-            {activeValidators.length > 0 ? (
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Voting Power</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Commission</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Slashing Events</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-foreground">{parseFloat(validator.voting_power).toFixed(0)}</td>
-                        <td className="py-3 px-4 text-right text-foreground">{(parseFloat(validator.commission) * 100).toFixed(2)}%</td>
-                        <td className="py-3 px-4 text-right">
-                          {validator.slashing_events > 0 ? (
-                            <span className="text-yellow-400">{validator.slashing_events}</span>
-                          ) : (
-                            <span className="text-green-400">0</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* This node */}
+          <Card className="bg-card/50">
+            <CardHeader>
+              <CardTitle>This Node</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-foreground/60 mb-1">Node ID (hex)</p>
+                  <p className="font-mono text-foreground break-all">{nodeInfo?.node_id ?? '...'}</p>
+                </div>
+                <div>
+                  <p className="text-foreground/60 mb-1">Listen Address</p>
+                  <p className="font-mono text-foreground break-all">
+                    {nodeInfo?.listen_addr ?? '...'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-foreground/60 mb-1">Shard Count</p>
+                  <p className="text-foreground">{nodeInfo?.shard_count ?? '...'}</p>
+                </div>
+                <div>
+                  <p className="text-foreground/60 mb-1">Uptime</p>
+                  <p className="text-foreground">
+                    {nodeInfo ? `${nodeInfo.uptime_seconds}s` : '...'}
+                  </p>
+                </div>
               </div>
-            ) : (
-              <Card className="bg-card/50">
-                <CardContent className="pt-6">
-                  <p className="text-foreground/60 text-sm">No active validators</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Inactive Validators */}
-          {inactiveValidators.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-foreground mb-4">Inactive Validators ({inactiveValidators.length})</h2>
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Voting Power</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Commission</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inactiveValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors opacity-60">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-foreground">{parseFloat(validator.voting_power).toFixed(0)}</td>
-                        <td className="py-3 px-4 text-right text-foreground">{(parseFloat(validator.commission) * 100).toFixed(2)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Slashed Validators */}
-          {slashedValidators.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-4">Slashed Validators ({slashedValidators.length})</h2>
-              <div className="overflow-x-auto border border-border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-card">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Moniker</th>
-                      <th className="text-left py-3 px-4 text-foreground/60 font-medium">Address</th>
-                      <th className="text-right py-3 px-4 text-foreground/60 font-medium">Slashing Events</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {slashedValidators.map((validator) => (
-                      <tr key={validator.address} className="border-b border-border/50 hover:bg-card/50 transition-colors bg-red-500/10">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{validator.moniker}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <code className="text-xs font-mono text-primary">{validator.address.slice(0, 16)}...</code>
-                        </td>
-                        <td className="py-3 px-4 text-right text-red-400">{validator.slashing_events}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            </CardContent>
+          </Card>
         </div>
       </div>
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />

@@ -13,3 +13,7 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+# Build artifacts
+next-env.d.ts
+package-lock.json
+tsconfig.tsbuildinfo
