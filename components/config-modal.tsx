@@ -25,13 +25,18 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
     }
 
     setConfig({ endpoint, token });
+
+    // Also set cookies so middleware can read them for auth gating
+    document.cookie = `omnia-node-endpoint=${encodeURIComponent(endpoint)}; path=/; max-age=2592000; samesite=lax`;
+    document.cookie = `omnia-manual-jwt=${encodeURIComponent(token)}; path=/; max-age=2592000; samesite=lax`;
+
     setError('');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md glass">
         <DialogHeader>
           <DialogTitle>Connect to Omnia Node</DialogTitle>
           <DialogDescription>
@@ -43,22 +48,22 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
             <Label htmlFor="endpoint">API Endpoint</Label>
             <Input
               id="endpoint"
-              placeholder="https://node.example.com:8080"
+              placeholder="https://78.47.43.136.sslip.io"
               value={endpoint}
               onChange={(e) => setEndpoint(e.target.value)}
-              className="mt-1"
+              className="mt-1 glass"
             />
-            <p className="text-xs text-muted-foreground mt-1">e.g., https://localhost:8080</p>
+            <p className="text-xs text-muted-foreground mt-1">Your node&apos;s HTTPS URL</p>
           </div>
           <div>
             <Label htmlFor="token">JWT Token</Label>
             <Input
               id="token"
               type="password"
-              placeholder="your-jwt-token"
+              placeholder="eyJhbGciOiJIUzI1NiIs..."
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              className="mt-1"
+              className="mt-1 glass"
             />
             <p className="text-xs text-muted-foreground mt-1">Obtain this from your node operator</p>
           </div>
@@ -67,7 +72,7 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} className="glow">
               Connect
             </Button>
           </div>
