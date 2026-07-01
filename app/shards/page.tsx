@@ -207,15 +207,15 @@ export default function ShardsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Shards</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Shards</h1>
           <p className="text-foreground/60">
             Submit operations to domain shards (identity, biological, computational, physical, economics)
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {/* Shard reference */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-foreground mb-4">Shard Reference</h2>
@@ -243,8 +243,8 @@ export default function ShardsPage() {
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-medium ${
                             s.status === 'active'
-                              ? 'bg-green-500/20 text-green-300'
-                              : 'bg-yellow-500/20 text-yellow-300'
+                              ? 'bg-green-600/10 text-green-700'
+                              : 'bg-amber-500/10 text-amber-700'
                           }`}
                         >
                           {s.status === 'active' ? 'Active' : 'Planned'}
@@ -270,8 +270,8 @@ export default function ShardsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {shard.status === 'planned' && (
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
-                  <Info className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="p-3 bg-amber-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-foreground/70">
                     This shard is <strong>planned but not yet implemented</strong> on the node.
                     Submitting an operation will return HTTP 501 with a &quot;not yet implemented&quot;
@@ -306,12 +306,12 @@ export default function ShardsPage() {
                   </div>
 
                   {op && (
-                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-lg">
                       <p className="text-sm text-foreground/70">
                         <strong className="text-foreground">{op.name}</strong>: {op.description}
                       </p>
                       {op.privileged && (
-                        <p className="text-xs text-yellow-300 mt-1">
+                        <p className="text-xs text-amber-700 mt-1">
                           ⚠ Privileged operation — requires caller to be in OMNIA_AUTHORIZED_CALLERS.
                         </p>
                       )}
@@ -372,8 +372,8 @@ export default function ShardsPage() {
                 </div>
               )}
               {result && (
-                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <p className="text-green-300 text-xs mb-1 font-semibold">Response:</p>
+                <div className="p-3 bg-green-600/10 border border-green-500/20 rounded-lg">
+                  <p className="text-green-700 text-xs mb-1 font-semibold">Response:</p>
                   <pre className="text-xs font-mono text-foreground/80 overflow-x-auto whitespace-pre-wrap break-words">
                     {result}
                   </pre>

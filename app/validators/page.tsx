@@ -3,6 +3,7 @@
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { ErrorBanner } from '@/components/error-banner';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Validator } from '@/lib/api-client';
@@ -60,17 +61,15 @@ export default function ValidatorsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Validators</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Validators</h1>
           <p className="text-foreground/60">Monitor validator performance and status</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {validatorsError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(validatorsError)}</p>
-            </div>
+            <ErrorBanner error={validatorsError} title="Couldn't load validators" />
           )}
 
           {/* Statistics */}
@@ -79,7 +78,7 @@ export default function ValidatorsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-foreground/60 text-sm">Active</span>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-2xl font-semibold text-foreground">{activeValidators.length}</p>
               </CardContent>
@@ -89,7 +88,7 @@ export default function ValidatorsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-foreground/60 text-sm">Slashed</span>
-                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
                 </div>
                 <p className="text-2xl font-semibold text-foreground">
                   {slashedValidators.length + inactiveValidators.length}
@@ -119,8 +118,8 @@ export default function ValidatorsPage() {
           </div>
 
           {/* Current round indicator */}
-          <div className="mb-6 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-2 text-sm">
-            <Shield className="w-4 h-4 text-blue-400" />
+          <div className="mb-6 p-3 bg-blue-600/10 border border-blue-500/20 rounded-lg flex items-center gap-2 text-sm">
+            <Shield className="w-4 h-4 text-blue-700" />
             <span className="text-foreground/70">
               Current consensus round: <strong className="text-foreground">{currentRound}</strong>
               {' · '}
@@ -154,7 +153,7 @@ export default function ValidatorsPage() {
                         <tr
                           key={v.node_id}
                           className={`border-b border-border/50 hover:bg-card/50 transition-colors ${
-                            v.is_jailed ? 'bg-red-500/10' : ''
+                            v.is_jailed ? 'bg-red-600/10' : ''
                           }`}
                         >
                           <td className="py-3 px-3">
@@ -165,9 +164,9 @@ export default function ValidatorsPage() {
                           <td className="py-3 px-3 text-right text-foreground">{v.stake}</td>
                           <td className="py-3 px-3 text-right">
                             {v.slash_points > 0 ? (
-                              <span className="text-yellow-400">{v.slash_points}</span>
+                              <span className="text-amber-700">{v.slash_points}</span>
                             ) : (
-                              <span className="text-green-400">0</span>
+                              <span className="text-green-700">0</span>
                             )}
                           </td>
                           <td className="py-3 px-3 text-center">
@@ -203,12 +202,12 @@ export default function ValidatorsPage() {
 function getStatusColor(status: string): string {
   switch (status) {
     case 'active':
-      return 'bg-green-500/20 text-green-300';
+      return 'bg-green-600/10 text-green-700';
     case 'slashed':
-      return 'bg-yellow-500/20 text-yellow-300';
+      return 'bg-amber-500/10 text-amber-700';
     case 'jailed':
-      return 'bg-red-500/20 text-red-300';
+      return 'bg-red-600/10 text-red-700';
     default:
-      return 'bg-gray-500/20 text-gray-300';
+      return 'bg-gray-500/10 text-gray-600';
   }
 }

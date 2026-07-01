@@ -77,18 +77,18 @@ export default function IdentityPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Identity</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Identity</h1>
           <p className="text-foreground/60">
             Decentralized identifiers, biometric binding, and social recovery
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {/* Status banner */}
-          <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
-            <Info className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div className="mb-8 p-4 bg-amber-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-foreground/70">
               <strong className="text-foreground">The identity shard is specified but not yet
               exposed via the REST API.</strong> Submitting identity operations to{' '}

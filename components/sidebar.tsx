@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ConfigModal } from './config-modal';
 import { NotificationBell } from './notifications/notification-bell';
@@ -24,6 +25,8 @@ import {
   Bell,
   User as UserIcon,
   LogIn,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const navItems = [
@@ -42,100 +45,178 @@ const navItems = [
   { name: 'Admin', href: '/admin', icon: Shield },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const { supabaseUser, did, signOut, isSupabaseConfigured } = useAuth();
-  const [configOpen, setConfigOpen] = useState(false);
-
+function Brand() {
   return (
-    <>
-      <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
-        {/* Logo + brand */}
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center glow">
-              <Network className="w-5 h-5 text-primary-foreground" />
+    <Link href="/" className="flex items-center gap-2.5 group">
+      <Image
+        src="/omnia-mark.png"
+        alt="Omnia Protocol"
+        width={30}
+        height={30}
+        className="shrink-0"
+        priority
+      />
+      <span className="font-mono text-[15px] tracking-wide text-sidebar-foreground lowercase">
+        omnia
+        <span className="text-sidebar-foreground/45"> protocol</span>
+      </span>
+    </Link>
+  );
+}
+
+function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  return (
+    <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        const Icon = item.icon;
+        return (
+          <Link key={item.href} href={item.href} onClick={onNavigate}>
+            <div
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors duration-150 ${
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-foreground font-semibold'
+                  : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
+              }`}
+            >
+              <Icon
+                className={`w-[18px] h-[18px] ${isActive ? 'text-primary' : ''}`}
+                strokeWidth={isActive ? 2.25 : 2}
+              />
+              <span className="text-sm">{item.name}</span>
             </div>
-            <div className="flex-1">
-              <h1 className="font-bold text-lg text-sidebar-foreground tracking-tight">Omnia</h1>
-              <p className="text-xs text-sidebar-foreground/50 font-medium">Protocol Dashboard</p>
-            </div>
-          </div>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function UserBlock() {
+  const { supabaseUser, did } = useAuth();
+  if (!supabaseUser) return null;
+  return (
+    <div className="p-4 border-b border-sidebar-border">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-foreground/70 text-sm font-semibold border border-border">
+          {(supabaseUser.email ?? '?')[0].toUpperCase()}
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-foreground truncate font-medium">{supabaseUser.email}</p>
+          <p className="text-xs text-muted-foreground font-mono truncate">{did}</p>
+        </div>
+        <NotificationBell />
+      </div>
+    </div>
+  );
+}
 
-        {/* User info */}
-        {supabaseUser && (
-          <div className="p-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary text-sm font-semibold ring-1 ring-primary/20">
-                {(supabaseUser.email ?? '?')[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground truncate font-medium">{supabaseUser.email}</p>
-                <p className="text-xs text-foreground/40 font-mono truncate">{did}</p>
-              </div>
-              <NotificationBell />
-            </div>
-          </div>
-        )}
-
-        {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href}>
-                <div
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground glow'
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <Icon className={`w-[18px] h-[18px] ${isActive ? '' : 'opacity-70'}`} />
-                  <span className="text-sm font-medium">{item.name}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div className="p-3 border-t border-sidebar-border space-y-1">
+function FooterActions({ onConfigure }: { onConfigure: () => void }) {
+  const { supabaseUser, signOut, isSupabaseConfigured } = useAuth();
+  return (
+    <div className="p-3 border-t border-sidebar-border space-y-1">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start text-sidebar-foreground/60 hover:text-sidebar-foreground"
+        onClick={onConfigure}
+      >
+        <Settings className="w-4 h-4 mr-2" />
+        Node settings
+      </Button>
+      {isSupabaseConfigured && supabaseUser ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10"
+          onClick={() => signOut()}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign out
+        </Button>
+      ) : isSupabaseConfigured ? (
+        <Link href="/login" className="block">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-            onClick={() => setConfigOpen(true)}
+            className="w-full justify-start text-sidebar-foreground/60 hover:text-sidebar-foreground"
           >
-            <Settings className="w-4 h-4 mr-2" />
-            Configure
+            <LogIn className="w-4 h-4 mr-2" />
+            Sign in
           </Button>
-          {isSupabaseConfigured && supabaseUser ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10"
-              onClick={() => signOut()}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          ) : isSupabaseConfigured ? (
-            <Link href="/login">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Sign In
-              </Button>
-            </Link>
-          ) : null}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Close the drawer on navigation and lock scroll while it's open
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [drawerOpen]);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        data-sidebar
+        className="hidden md:flex w-64 h-screen bg-sidebar border-r border-sidebar-border flex-col"
+      >
+        <div className="px-5 py-5 border-b border-sidebar-border">
+          <Brand />
         </div>
-      </div>
+        <UserBlock />
+        <NavList />
+        <FooterActions onConfigure={() => setConfigOpen(true)} />
+      </aside>
+
+      {/* Mobile top bar */}
+      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-13 bg-sidebar/95 backdrop-blur-sm border-b border-sidebar-border flex items-center justify-between px-4">
+        <Brand />
+        <button
+          type="button"
+          aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen((v) => !v)}
+          className="p-2 -mr-2 rounded-lg text-foreground/70 hover:bg-secondary active:bg-secondary transition-colors"
+        >
+          {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </header>
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="md:hidden fixed inset-0 z-30">
+          <div
+            className="absolute inset-0 bg-foreground/25"
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute top-13 bottom-0 left-0 w-72 max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col animate-in">
+            <UserBlock />
+            <NavList onNavigate={() => setDrawerOpen(false)} />
+            <FooterActions
+              onConfigure={() => {
+                setDrawerOpen(false);
+                setConfigOpen(true);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </>

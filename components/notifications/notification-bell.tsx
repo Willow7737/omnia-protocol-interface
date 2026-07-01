@@ -40,11 +40,11 @@ const KIND_ICON: Record<string, typeof Bell> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
-  slash: 'text-red-400',
-  proposal: 'text-yellow-400',
-  ceremony: 'text-purple-400',
-  transfer: 'text-green-400',
-  info: 'text-blue-400',
+  slash: 'text-red-700',
+  proposal: 'text-amber-700',
+  ceremony: 'text-purple-700',
+  transfer: 'text-green-700',
+  info: 'text-blue-700',
 };
 
 /**

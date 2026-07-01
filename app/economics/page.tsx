@@ -73,7 +73,7 @@ export default function EconomicsPage() {
       );
       mutateBalance();
     } catch (e) {
-      setActionError(String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setRegistering(false);
     }
@@ -101,7 +101,7 @@ export default function EconomicsPage() {
       mutateTransfers();
       mutateBalance();
     } catch (e) {
-      setActionError(String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setTransferring(false);
     }
@@ -114,16 +114,16 @@ export default function EconomicsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Economics</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Economics</h1>
           <p className="text-foreground/60">UBC balances, spend operations, and transfer history</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {/* Info banner */}
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="mb-6 p-4 bg-blue-600/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-foreground/70">
               UBC tokens are <strong>soulbound</strong>: the &quot;transfer&quot; endpoint actually
               spends (burns) tokens from the sender&apos;s balance. The recipient does not receive
@@ -150,7 +150,7 @@ export default function EconomicsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-foreground/60 text-sm">Total Volume Spent</span>
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <TrendingUp className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-2xl font-semibold text-foreground">{totalVolume} UBC</p>
               </CardContent>
@@ -236,8 +236,8 @@ export default function EconomicsPage() {
                 </div>
               )}
               {isNotRegistered && (
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                  <p className="text-yellow-300 text-sm">
+                <div className="p-3 bg-amber-500/10 border border-yellow-500/20 rounded-lg">
+                  <p className="text-amber-700 text-sm">
                     <strong>DID not registered.</strong> Click the <em>Register DID</em> button
                     above to enroll this DID in the economics quota system.
                   </p>
@@ -312,7 +312,7 @@ export default function EconomicsPage() {
                 />
               </div>
               {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-              {actionSuccess && <p className="text-sm text-green-400">{actionSuccess}</p>}
+              {actionSuccess && <p className="text-sm text-green-700">{actionSuccess}</p>}
               <Button onClick={handleTransfer} disabled={transferring}>
                 {transferring ? 'Spending...' : 'Spend UBC'}
               </Button>
@@ -329,7 +329,7 @@ export default function EconomicsPage() {
             </CardHeader>
             <CardContent>
               {transfersError && (
-                <p className="text-sm text-destructive mb-2">{String(transfersError)}</p>
+                <p className="text-sm text-destructive mb-2">Couldn’t load transfer history. {transfersError instanceof Error ? transfersError.message : String(transfersError)}</p>
               )}
               {transfers && transfers.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -367,7 +367,7 @@ export default function EconomicsPage() {
                             {t.new_balance}
                           </td>
                           <td className="py-3 px-3">
-                            <span className="px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-300">
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-green-600/10 text-green-700">
                               {t.status}
                             </span>
                           </td>

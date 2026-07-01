@@ -15,12 +15,12 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
 
   const handleSave = () => {
     if (!endpoint.trim() || !token.trim()) {
-      setError('Please fill in all fields');
+      setError('Enter both an endpoint and a token.');
       return;
     }
 
     if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
-      setError('Endpoint must start with http:// or https://');
+      setError('The endpoint must start with http:// or https://.');
       return;
     }
 
@@ -36,9 +36,9 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect to Omnia Node</DialogTitle>
+          <DialogTitle>Connect to a node</DialogTitle>
           <DialogDescription>
             Enter your Omnia node REST API endpoint and authentication token to get started.
           </DialogDescription>
@@ -48,10 +48,10 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
             <Label htmlFor="endpoint">API Endpoint</Label>
             <Input
               id="endpoint"
-              placeholder="https://78.47.43.136.sslip.io"
+              placeholder="https://node.example.com"
               value={endpoint}
               onChange={(e) => setEndpoint(e.target.value)}
-              className="mt-1 glass"
+              className="mt-1"
             />
             <p className="text-xs text-muted-foreground mt-1">Your node&apos;s HTTPS URL</p>
           </div>
@@ -63,7 +63,7 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
               placeholder="eyJhbGciOiJIUzI1NiIs..."
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              className="mt-1 glass"
+              className="mt-1"
             />
             <p className="text-xs text-muted-foreground mt-1">Obtain this from your node operator</p>
           </div>
@@ -72,7 +72,7 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} className="glow">
+            <Button onClick={handleSave} className="">
               Connect
             </Button>
           </div>

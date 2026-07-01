@@ -3,6 +3,7 @@
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { ErrorBanner } from '@/components/error-banner';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,19 +71,17 @@ export default function AnalyticsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Analytics</h1>
           <p className="text-foreground/60">
             UBC volume, event activity, and top participants (from Supabase mirror)
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {error && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(error)}</p>
-            </div>
+            <ErrorBanner error={error} title="Couldn't load analytics" />
           )}
 
           {!data && !error && (
@@ -97,31 +96,31 @@ export default function AnalyticsPage() {
                   label="Total Volume"
                   value={`${data.summary.total_volume} UBC`}
                   icon={DollarSign}
-                  color="text-green-400"
+                  color="text-green-700"
                 />
                 <SummaryCard
                   label="Total Transfers"
                   value={data.summary.total_transfers.toString()}
                   icon={TrendingUp}
-                  color="text-blue-400"
+                  color="text-blue-700"
                 />
                 <SummaryCard
                   label="Total Events"
                   value={data.summary.total_events.toString()}
                   icon={Activity}
-                  color="text-purple-400"
+                  color="text-purple-700"
                 />
                 <SummaryCard
                   label="Unique Senders"
                   value={data.summary.unique_senders.toString()}
                   icon={Users}
-                  color="text-yellow-400"
+                  color="text-amber-700"
                 />
                 <SummaryCard
                   label="Unique Recipients"
                   value={data.summary.unique_recipients.toString()}
                   icon={Users}
-                  color="text-cyan-400"
+                  color="text-cyan-700"
                 />
               </div>
 
@@ -286,7 +285,7 @@ export default function AnalyticsPage() {
                                   {s.from_did.slice(0, 24)}…
                                 </code>
                               </td>
-                              <td className="py-3 px-3 text-right font-medium text-green-400">
+                              <td className="py-3 px-3 text-right font-medium text-green-700">
                                 {s.total_amount} UBC
                               </td>
                               <td className="py-3 px-3 text-right text-foreground/60">

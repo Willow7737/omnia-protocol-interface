@@ -101,11 +101,11 @@ export default function ProfilePage() {
     return (
       <div className="flex h-screen bg-background">
         <Sidebar />
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           <div className="max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-2">Profile</h1>
             <p className="text-foreground/60 mb-6">Your DID and account information</p>
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <div className="p-4 bg-amber-500/10 border border-yellow-500/20 rounded-lg">
               <p className="text-sm text-foreground/70">
                 Profile features require Supabase. You&apos;re currently in manual mode — sign in
                 via the login page to access your profile.
@@ -145,13 +145,13 @@ export default function ProfilePage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Profile</h1>
           <p className="text-foreground/60">Your DID, display name, and activity</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Identity */}
             <Card className="bg-card/50">
@@ -219,7 +219,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-                {saveSuccess && <p className="text-sm text-green-400">{saveSuccess}</p>}
+                {saveSuccess && <p className="text-sm text-green-700">{saveSuccess}</p>}
                 <Button onClick={handleSave} disabled={saving || displayName.trim().length === 0}>
                   {saving ? (
                     <>
@@ -304,8 +304,8 @@ export default function ProfilePage() {
                                 <span
                                   className={`px-2 py-1 rounded text-xs font-medium ${
                                     isOutgoing
-                                      ? 'bg-red-500/20 text-red-300'
-                                      : 'bg-green-500/20 text-green-300'
+                                      ? 'bg-red-600/10 text-red-700'
+                                      : 'bg-green-600/10 text-green-700'
                                   }`}
                                 >
                                   {isOutgoing ? 'Sent' : 'Received'}
@@ -316,7 +316,7 @@ export default function ProfilePage() {
                                   {(isOutgoing ? t.to_did : t.from_did).slice(0, 24)}…
                                 </code>
                               </td>
-                              <td className={`py-3 px-3 text-right font-medium ${isOutgoing ? 'text-red-400' : 'text-green-400'}`}>
+                              <td className={`py-3 px-3 text-right font-medium ${isOutgoing ? 'text-red-700' : 'text-green-700'}`}>
                                 {isOutgoing ? '-' : '+'}{t.amount} UBC
                               </td>
                               <td className="py-3 px-3 text-right text-foreground/60">

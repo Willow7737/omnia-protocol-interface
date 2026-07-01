@@ -4,6 +4,7 @@ import { useConfig } from '@/lib/config-context';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { ErrorBanner } from '@/components/error-banner';
 import { Comments } from '@/components/comments';
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -70,7 +71,7 @@ export default function GovernancePage() {
       setNewProposalExpiry('100');
       mutate();
     } catch (e) {
-      setFormError(String(e));
+      setFormError(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
     }
@@ -96,17 +97,15 @@ export default function GovernancePage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Governance</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Governance</h1>
           <p className="text-foreground/60">Create proposals and cast votes</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {proposalsError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(proposalsError)}</p>
-            </div>
+            <ErrorBanner error={proposalsError} title="Couldn't load proposals" />
           )}
 
           {/* Create proposal */}
@@ -257,7 +256,7 @@ function ProposalCard({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-green-400">For</span>
+              <span className="text-sm font-medium text-green-700">For</span>
               <span className="text-sm text-foreground/60">
                 {proposal.votes_for} ({yesPercent.toFixed(1)}%)
               </span>
@@ -267,7 +266,7 @@ function ProposalCard({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-red-400">Against</span>
+              <span className="text-sm font-medium text-red-700">Against</span>
               <span className="text-sm text-foreground/60">
                 {proposal.votes_against} ({noPercent.toFixed(1)}%)
               </span>
@@ -277,7 +276,7 @@ function ProposalCard({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-yellow-400">Abstain</span>
+              <span className="text-sm font-medium text-amber-700">Abstain</span>
               <span className="text-sm text-foreground/60">
                 {proposal.votes_abstain} ({abstainPercent.toFixed(1)}%)
               </span>
@@ -331,16 +330,16 @@ function ProposalCard({
 function getStatusColor(status: string): string {
   switch (status) {
     case 'voting':
-      return 'bg-blue-500/20 text-blue-300';
+      return 'bg-blue-600/10 text-blue-700';
     case 'pending':
-      return 'bg-yellow-500/20 text-yellow-300';
+      return 'bg-amber-500/10 text-amber-700';
     case 'passed':
-      return 'bg-green-500/20 text-green-300';
+      return 'bg-green-600/10 text-green-700';
     case 'expired':
-      return 'bg-gray-500/20 text-gray-300';
+      return 'bg-gray-500/10 text-gray-600';
     case 'failed':
-      return 'bg-red-500/20 text-red-300';
+      return 'bg-red-600/10 text-red-700';
     default:
-      return 'bg-gray-500/20 text-gray-300';
+      return 'bg-gray-500/10 text-gray-600';
   }
 }

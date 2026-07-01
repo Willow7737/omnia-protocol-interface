@@ -140,7 +140,7 @@ export function Comments({ proposalId, canComment }: CommentsProps) {
           Discussion ({comments?.length ?? 0})
         </span>
         {isRealtimeConnected && (
-          <span className="ml-auto inline-flex items-center gap-1 text-xs text-green-400">
+          <span className="ml-auto inline-flex items-center gap-1 text-xs text-green-700">
             <Radio className="w-3 h-3" />
             Live
           </span>

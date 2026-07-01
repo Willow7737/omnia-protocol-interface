@@ -42,11 +42,11 @@ const KIND_ICON: Record<string, typeof Bell> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
-  slash: 'text-red-400',
-  proposal: 'text-yellow-400',
-  ceremony: 'text-purple-400',
-  transfer: 'text-green-400',
-  info: 'text-blue-400',
+  slash: 'text-red-700',
+  proposal: 'text-amber-700',
+  ceremony: 'text-purple-700',
+  transfer: 'text-green-700',
+  info: 'text-blue-700',
 };
 
 export default function NotificationsPage() {
@@ -80,10 +80,10 @@ export default function NotificationsPage() {
     return (
       <div className="flex h-screen bg-background">
         <Sidebar />
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           <div className="max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Notifications</h1>
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-2">Notifications</h1>
+            <div className="p-4 bg-amber-500/10 border border-yellow-500/20 rounded-lg">
               <p className="text-sm text-foreground/70">
                 Notifications require Supabase. Sign in via the login page to access them.
               </p>
@@ -110,10 +110,10 @@ export default function NotificationsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <div className="border-b border-border px-8 py-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Notifications</h1>
             <p className="text-foreground/60">
               {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
             </p>
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           <div className="max-w-3xl mx-auto space-y-3">
             {notifications.length === 0 ? (
               <Card className="bg-card/50">

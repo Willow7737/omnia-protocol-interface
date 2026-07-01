@@ -136,16 +136,16 @@ export default function AdminPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Admin</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Admin</h1>
           <p className="text-foreground/60">Quick actions for privileged node operations</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {/* Authorization banner */}
-          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
-            <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="mb-6 p-4 bg-blue-600/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
+            <Shield className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-foreground/70">
               <strong className="text-foreground">Privileged operations require authorization.</strong>{' '}
               The node checks the caller&apos;s JWT <code>sub</code> against the{' '}
@@ -165,18 +165,18 @@ export default function AdminPage() {
             <div
               className={`mb-6 p-4 rounded-lg border ${
                 feedback.kind === 'success'
-                  ? 'bg-green-500/10 border-green-500/20'
+                  ? 'bg-green-600/10 border-green-500/20'
                   : feedback.kind === 'warning'
-                    ? 'bg-yellow-500/10 border-yellow-500/20'
+                    ? 'bg-amber-500/10 border-yellow-500/20'
                     : 'bg-destructive/10 border-destructive/20'
               }`}
             >
               <p
                 className={`text-sm break-all ${
                   feedback.kind === 'success'
-                    ? 'text-green-300'
+                    ? 'text-green-700'
                     : feedback.kind === 'warning'
-                      ? 'text-yellow-300'
+                      ? 'text-amber-700'
                       : 'text-destructive'
                 }`}
               >
@@ -232,7 +232,7 @@ export default function AdminPage() {
                 <CardTitle className="flex items-center gap-2">
                   <Coins className="w-5 h-5" />
                   Mint UBC
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">
+                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-700">
                     Privileged
                   </span>
                 </CardTitle>
@@ -285,7 +285,7 @@ export default function AdminPage() {
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="w-5 h-5" />
                   Advance Epoch
-                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">
+                  <span className="ml-auto text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-700">
                     Privileged
                   </span>
                 </CardTitle>
@@ -333,7 +333,7 @@ export default function AdminPage() {
             <CardContent>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <Info className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
                   <span>
                     <strong>Node running with OMNIA_JWT_SECRET set?</strong> Required for all
                     authenticated endpoints. If unset, the node returns 503 on every authenticated
@@ -341,7 +341,7 @@ export default function AdminPage() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <Info className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
                   <span>
                     <strong>OMNIA_AUTHORIZED_CALLERS includes your JWT sub?</strong> Required for
                     privileged operations (mint, advance_epoch). For this dashboard, set it to{' '}
@@ -349,14 +349,14 @@ export default function AdminPage() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <Info className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
                   <span>
                     <strong>DID registered before minting?</strong> The recipient of a mint must
                     already be in the economics quota system — use the Register DID action first.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <Info className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
                   <span>
                     <strong>Operations applied locally only?</strong> Per the node&apos;s audit
                     notes, economics operations through the shards endpoint are applied to local

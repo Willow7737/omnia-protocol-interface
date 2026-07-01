@@ -3,6 +3,7 @@
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { ErrorBanner } from '@/components/error-banner';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { StoredEvent } from '@/lib/api-client';
@@ -56,7 +57,7 @@ export default function EventsPage() {
       setPayloadHex('');
       mutate();
     } catch (e) {
-      setActionError(String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
@@ -86,17 +87,15 @@ export default function EventsPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Events</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Events</h1>
           <p className="text-foreground/60">Submit and inspect consensus events</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {eventsError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(eventsError)}</p>
-            </div>
+            <ErrorBanner error={eventsError} title="Couldn't load events" />
           )}
 
           {/* Submit event */}
@@ -132,7 +131,7 @@ export default function EventsPage() {
                 />
               </div>
               {actionError && <p className="text-sm text-destructive">{actionError}</p>}
-              {actionSuccess && <p className="text-sm text-green-400 break-all">{actionSuccess}</p>}
+              {actionSuccess && <p className="text-sm text-green-700 break-all">{actionSuccess}</p>}
               <Button onClick={handleSubmit} disabled={submitting}>
                 {submitting ? 'Submitting...' : 'Submit Event'}
               </Button>
@@ -209,21 +208,21 @@ function EventCard({
   onToggle: () => void;
 }) {
   const getEventColor = (type: string) => {
-    if (type.includes('block')) return 'bg-blue-500/10 border-blue-500/30';
+    if (type.includes('block')) return 'bg-blue-600/10 border-blue-500/30';
     if (type.includes('vote')) return 'bg-purple-500/10 border-purple-500/30';
-    if (type.includes('proposal')) return 'bg-yellow-500/10 border-yellow-500/30';
-    if (type.includes('slash')) return 'bg-red-500/10 border-red-500/30';
-    if (type.includes('transfer')) return 'bg-green-500/10 border-green-500/30';
+    if (type.includes('proposal')) return 'bg-amber-500/10 border-yellow-500/30';
+    if (type.includes('slash')) return 'bg-red-600/10 border-red-500/30';
+    if (type.includes('transfer')) return 'bg-green-600/10 border-green-500/30';
     return 'bg-gray-500/10 border-gray-500/30';
   };
 
   const getEventBadgeColor = (type: string) => {
-    if (type.includes('block')) return 'bg-blue-500/20 text-blue-300';
-    if (type.includes('vote')) return 'bg-purple-500/20 text-purple-300';
-    if (type.includes('proposal')) return 'bg-yellow-500/20 text-yellow-300';
-    if (type.includes('slash')) return 'bg-red-500/20 text-red-300';
-    if (type.includes('transfer')) return 'bg-green-500/20 text-green-300';
-    return 'bg-gray-500/20 text-gray-300';
+    if (type.includes('block')) return 'bg-blue-600/10 text-blue-700';
+    if (type.includes('vote')) return 'bg-purple-500/20 text-purple-700';
+    if (type.includes('proposal')) return 'bg-amber-500/10 text-amber-700';
+    if (type.includes('slash')) return 'bg-red-600/10 text-red-700';
+    if (type.includes('transfer')) return 'bg-green-600/10 text-green-700';
+    return 'bg-gray-500/10 text-gray-600';
   };
 
   return (
@@ -243,10 +242,10 @@ function EventCard({
               <span
                 className={`px-2 py-0.5 rounded text-xs font-medium ${
                   event.status === 'submitted'
-                    ? 'bg-green-500/20 text-green-300'
+                    ? 'bg-green-600/10 text-green-700'
                     : event.status === 'submission_failed'
-                      ? 'bg-red-500/20 text-red-300'
-                      : 'bg-gray-500/20 text-gray-300'
+                      ? 'bg-red-600/10 text-red-700'
+                      : 'bg-gray-500/10 text-gray-600'
                 }`}
               >
                 {event.status}

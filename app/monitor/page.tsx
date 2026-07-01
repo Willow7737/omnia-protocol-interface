@@ -3,6 +3,7 @@
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { ConfigModal } from '@/components/config-modal';
+import { ErrorBanner } from '@/components/error-banner';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { NodeInfo, Peer } from '@/lib/api-client';
@@ -52,17 +53,15 @@ export default function MonitorPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Node Monitor</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Node Monitor</h1>
           <p className="text-foreground/60">Real-time node status and peer information</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {nodeError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-destructive text-sm">{String(nodeError)}</p>
-            </div>
+            <ErrorBanner error={nodeError} title="Couldn't reach the node" />
           )}
 
           {/* Status cards */}
@@ -71,7 +70,7 @@ export default function MonitorPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-foreground/60 text-sm">Status</span>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-xl font-semibold text-foreground">
                   {nodeInfo ? 'Running' : 'Loading...'}
@@ -217,7 +216,7 @@ export default function MonitorPage() {
                 <p className="text-foreground/60 text-sm">No peers connected</p>
               )}
               {peersError && (
-                <p className="text-destructive text-xs mt-2">{String(peersError)}</p>
+                <p className="text-destructive text-xs mt-2">Couldn’t load peers: {peersError instanceof Error ? peersError.message : String(peersError)}</p>
               )}
             </CardContent>
           </Card>

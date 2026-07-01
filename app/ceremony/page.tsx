@@ -102,7 +102,7 @@ export default function CeremonyPage() {
       mutateState();
       mutateTranscript();
     } catch (e) {
-      setActionError(String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +122,7 @@ export default function CeremonyPage() {
       mutateState();
       mutateTranscript();
     } catch (e) {
-      setActionError(String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setFinalizing(false);
     }
@@ -137,18 +137,18 @@ export default function CeremonyPage() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-border px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Ceremony</h1>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="border-b border-border px-4 py-4 sm:px-8 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Ceremony</h1>
           <p className="text-foreground/60">
             Multi-party trusted setup for Groth16 ZK proofs (Powers of Tau + Phase 2)
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
           {notImplemented && (
-            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
-              <Info className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="mb-6 p-4 bg-amber-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-foreground/70">
                 <strong className="text-foreground">ZK feature not enabled.</strong> The node was
                 built without <code>--features zk</code>. Ceremony endpoints return 501. Rebuild
@@ -157,8 +157,8 @@ export default function CeremonyPage() {
             </div>
           )}
           {ceremonyUnavailable && (
-            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
-              <Info className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="mb-6 p-4 bg-amber-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-foreground/70">
                 <strong className="text-foreground">Ceremony server not initialized.</strong> The
                 node is running with ZK support but the ceremony server was not started. Check the
@@ -174,7 +174,7 @@ export default function CeremonyPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-foreground/60 text-sm">Phase</span>
                   {isFinalized ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
                   ) : (
                     <Shield className="w-4 h-4 text-primary" />
                   )}
@@ -274,7 +274,7 @@ export default function CeremonyPage() {
                   received, the ceremony can be finalized. Finalization locks the SRS transcript
                   and produces the verifying key used by all subsequent ZK proof verifications.
                 </p>
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-lg">
                   <p className="text-xs text-foreground/70">
                     <strong>Status:</strong>{' '}
                     {isFinalized
@@ -309,8 +309,8 @@ export default function CeremonyPage() {
             </div>
           )}
           {actionSuccess && (
-            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <p className="text-green-300 text-sm break-all">{actionSuccess}</p>
+            <div className="mb-6 p-4 bg-green-600/10 border border-green-500/20 rounded-lg">
+              <p className="text-green-700 text-sm break-all">{actionSuccess}</p>
             </div>
           )}
 
@@ -324,7 +324,7 @@ export default function CeremonyPage() {
             </CardHeader>
             <CardContent>
               {transcriptError && (
-                <p className="text-sm text-destructive mb-2">{String(transcriptError)}</p>
+                <p className="text-sm text-destructive mb-2">Couldn’t load the transcript. {transcriptError instanceof Error ? transcriptError.message : String(transcriptError)}</p>
               )}
               {transcript && transcript.contributions.length > 0 ? (
                 <div className="overflow-x-auto">
