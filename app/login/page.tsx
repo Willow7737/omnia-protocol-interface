@@ -18,7 +18,7 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const { isSupabaseConfigured, signInWithGitHub, signInWithGoogle, signInWithEmail, isAwaitingEmail, stopEmailAwait } = useAuth();
+  const { isSupabaseConfigured, supabaseUser, signInWithGitHub, signInWithGoogle, signInWithEmail, isAwaitingEmail, stopEmailAwait } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -26,11 +26,19 @@ function LoginContent() {
   const [loading, setLoading] = useState<'github' | 'google' | 'email' | null>(null);
 
   const callbackError = searchParams.get('error');
-  const nextPath = searchParams.get('next') || '/';
+  const nextPath = searchParams.get('next') || '/dashboard';
 
   useEffect(() => {
     if (isAwaitingEmail) setEmailSent(true);
   }, [isAwaitingEmail]);
+
+  // Already signed in (or the session just arrived via the magic-link
+  // polling / OAuth redirect) — leave the login page for the app.
+  useEffect(() => {
+    if (supabaseUser) {
+      router.replace(nextPath);
+    }
+  }, [supabaseUser, nextPath, router]);
 
   if (!isSupabaseConfigured) {
     return (

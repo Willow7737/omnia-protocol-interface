@@ -4,9 +4,10 @@ import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { AuthGuard } from '@/components/auth-guard';
 import { ConfigModal } from '@/components/config-modal';
+import { TableSkeleton } from '@/components/loading';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Balance, TransferRecord, ApiError, isNotFound, isForbidden } from '@/lib/api-client';
+import { Balance, TransferRecord, ApiError, isNotFound } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,6 +89,12 @@ export default function EconomicsPage() {
     setActionSuccess('');
     if (!did || !transferTo) {
       setActionError('Both sender DID and recipient DID are required');
+      return;
+    }
+    if (did.trim() === transferTo.trim()) {
+      setActionError(
+        'You can’t send UBC to yourself. UBC is soulbound — a "transfer" burns the amount from your balance and nobody receives it, so a self-transfer would only destroy your tokens.',
+      );
       return;
     }
     const amount = parseInt(transferAmount, 10);

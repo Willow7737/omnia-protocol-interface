@@ -4,6 +4,7 @@ import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
 import { AuthGuard } from '@/components/auth-guard';
 import { ConfigModal } from '@/components/config-modal';
+import { CardListSkeleton } from '@/components/loading';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { CeremonyState, CeremonyTranscript, ApiError } from '@/lib/api-client';
