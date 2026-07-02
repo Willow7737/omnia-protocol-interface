@@ -4,11 +4,14 @@ import type { NextRequest } from 'next/server'
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/auth/callback']
 
+// The landing page handles its own unauthenticated state (connect flow)
+const LANDING = '/'
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public routes
-  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+  // Allow public routes and the landing page
+  if (pathname === LANDING || PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
     return NextResponse.next()
   }
 
@@ -25,16 +28,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for Supabase auth cookies (sb-<project-ref>-auth-token)
-  const authCookie = request.cookies.getAll().find(
-    (cookie) => cookie.name.includes('-auth-token') || cookie.name === 'omnia-manual-jwt'
-  )
+  // Supabase stores its session in cookies named sb-<project-ref>-auth-token
+  // (optionally chunked as .0, .1, ...). Match that shape exactly — a loose
+  // substring check would accept any cookie someone names *-auth-token.
+  const hasSupabaseSession = request.cookies
+    .getAll()
+    .some((cookie) => /^sb-[a-z0-9]+-auth-token(\.\d+)?$/.test(cookie.name) && cookie.value)
 
-  // Check for manual JWT in cookies (fallback mode)
+  // Manual mode requires both the endpoint and the node JWT
   const manualJwt = request.cookies.get('omnia-manual-jwt')?.value
   const nodeEndpoint = request.cookies.get('omnia-node-endpoint')?.value
 
-  if (authCookie || (manualJwt && nodeEndpoint)) {
+  if (hasSupabaseSession || (manualJwt && nodeEndpoint)) {
     return NextResponse.next()
   }
 

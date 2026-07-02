@@ -222,6 +222,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDid(null);
     setNodeJwt(null);
     localStorage.removeItem(MANUAL_JWT_KEY);
+    // Clear every auth cookie the middleware might honor. Supabase's
+    // signOut clears its own cookies, but stale/manual ones would keep
+    // the middleware waving requests through after sign-out.
+    if (typeof document !== 'undefined') {
+      document.cookie = 'omnia-manual-jwt=; path=/; max-age=0';
+      document.cookie = 'omnia-node-endpoint=; path=/; max-age=0';
+      document.cookie
+        .split(';')
+        .map((c) => c.trim().split('=')[0])
+        .filter((name) => /^sb-.*-auth-token/.test(name))
+        .forEach((name) => {
+          document.cookie = `${name}=; path=/; max-age=0`;
+        });
+    }
   }, [isSupabaseConfigured]);
 
   // Manual mode (fallback)
@@ -230,6 +244,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNodeJwt(token);
     localStorage.setItem(ENDPOINT_KEY, endpoint);
     localStorage.setItem(MANUAL_JWT_KEY, token);
+    // Keep middleware cookies in sync — this is the single place that
+    // writes manual-mode credentials.
+    document.cookie = `omnia-node-endpoint=${encodeURIComponent(endpoint)}; path=/; max-age=2592000; samesite=lax`;
+    document.cookie = `omnia-manual-jwt=${encodeURIComponent(token)}; path=/; max-age=2592000; samesite=lax`;
   }, []);
 
   // Update endpoint without changing auth

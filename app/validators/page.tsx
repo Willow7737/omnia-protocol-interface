@@ -2,8 +2,11 @@
 
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
+import { AuthGuard } from '@/components/auth-guard';
+import { Button } from '@/components/ui/button';
 import { ConfigModal } from '@/components/config-modal';
 import { ErrorBanner } from '@/components/error-banner';
+import { TableSkeleton } from '@/components/loading';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Validator } from '@/lib/api-client';
@@ -36,17 +39,20 @@ export default function ValidatorsPage() {
 
   if (!isConfigured) {
     return (
+      <AuthGuard>
       <div className="flex h-screen bg-background">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Not Connected</h2>
-            <p className="text-foreground/60 mb-4">Please configure your node connection</p>
+          <div className="text-center max-w-xs">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-1.5">No node connected</h2>
+            <p className="text-sm text-muted-foreground mb-5">Add your node&apos;s endpoint and token to load this page.</p>
+            <Button onClick={() => setConfigOpen(true)}>Open node settings</Button>
           </div>
         </div>
         <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
       </div>
+      </AuthGuard>
     );
   }
 
@@ -59,6 +65,7 @@ export default function ValidatorsPage() {
   const currentRound = result?.currentRound ?? 0;
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
@@ -137,7 +144,9 @@ export default function ValidatorsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {validators.length > 0 ? (
+              {!result && !validatorsError ? (
+                <TableSkeleton rows={4} />
+              ) : validators.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -196,6 +205,7 @@ export default function ValidatorsPage() {
       </div>
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
+    </AuthGuard>
   );
 }
 

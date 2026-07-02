@@ -24,11 +24,8 @@ export function ConfigModal({ open, onOpenChange }: { open: boolean; onOpenChang
       return;
     }
 
+    // setConfig persists to localStorage and cookies (middleware reads the cookies)
     setConfig({ endpoint, token });
-
-    // Also set cookies so middleware can read them for auth gating
-    document.cookie = `omnia-node-endpoint=${encodeURIComponent(endpoint)}; path=/; max-age=2592000; samesite=lax`;
-    document.cookie = `omnia-manual-jwt=${encodeURIComponent(token)}; path=/; max-age=2592000; samesite=lax`;
 
     setError('');
     onOpenChange(false);

@@ -3,8 +3,10 @@
 import { useConfig } from '@/lib/config-context';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/sidebar';
+import { AuthGuard } from '@/components/auth-guard';
 import { ConfigModal } from '@/components/config-modal';
 import { ErrorBanner } from '@/components/error-banner';
+import { CardListSkeleton } from '@/components/loading';
 import { Comments } from '@/components/comments';
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -37,17 +39,20 @@ export default function GovernancePage() {
 
   if (!isConfigured) {
     return (
+      <AuthGuard>
       <div className="flex h-screen bg-background">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Not Connected</h2>
-            <p className="text-foreground/60 mb-4">Please configure your node connection</p>
+          <div className="text-center max-w-xs">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-1.5">No node connected</h2>
+            <p className="text-sm text-muted-foreground mb-5">Add your node&apos;s endpoint and token to load this page.</p>
+            <Button onClick={() => setConfigOpen(true)}>Open node settings</Button>
           </div>
         </div>
         <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
       </div>
+      </AuthGuard>
     );
   }
 
@@ -95,6 +100,7 @@ export default function GovernancePage() {
     proposals?.filter((p) => p.status === 'passed' || p.status === 'failed' || p.status === 'expired') || [];
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
@@ -161,7 +167,9 @@ export default function GovernancePage() {
               Active Proposals ({activeProposals.length})
             </h2>
             <div className="space-y-4">
-              {activeProposals.length > 0 ? (
+              {!proposals && !proposalsError ? (
+                <CardListSkeleton count={3} />
+              ) : activeProposals.length > 0 ? (
                 activeProposals.map((p) => (
                   <ProposalCard
                     key={p.id}
@@ -204,6 +212,7 @@ export default function GovernancePage() {
       </div>
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
+    </AuthGuard>
   );
 }
 

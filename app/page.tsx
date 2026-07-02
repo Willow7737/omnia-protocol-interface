@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ConfigModal } from '@/components/config-modal';
 import { Sidebar } from '@/components/sidebar';
+import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import {
   Network,
@@ -123,9 +124,7 @@ export default function Page() {
           <div className="p-4 sm:p-8 max-w-6xl mx-auto w-full">
             {supabaseUser && (
               <div className="mb-6 px-4 py-3 bg-card border border-border rounded-2xl flex items-center gap-3 animate-in">
-                <div className="w-9 h-9 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground/70 text-sm font-semibold shrink-0">
-                  {(supabaseUser.email ?? '?')[0].toUpperCase()}
-                </div>
+                <UserAvatar user={supabaseUser} size={36} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground truncate">
                     Signed in as <strong className="font-semibold">{supabaseUser.email}</strong>

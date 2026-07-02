@@ -2,8 +2,11 @@
 
 import { useConfig } from '@/lib/config-context';
 import { Sidebar } from '@/components/sidebar';
+import { AuthGuard } from '@/components/auth-guard';
+import { Button } from '@/components/ui/button';
 import { ConfigModal } from '@/components/config-modal';
 import { ErrorBanner } from '@/components/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { NodeInfo, Peer } from '@/lib/api-client';
@@ -36,21 +39,25 @@ export default function MonitorPage() {
 
   if (!isConfigured) {
     return (
+      <AuthGuard>
       <div className="flex h-screen bg-background">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Not Connected</h2>
-            <p className="text-foreground/60 mb-4">Please configure your node connection</p>
+          <div className="text-center max-w-xs">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-1.5">No node connected</h2>
+            <p className="text-sm text-muted-foreground mb-5">Add your node&apos;s endpoint and token to load this page.</p>
+            <Button onClick={() => setConfigOpen(true)}>Open node settings</Button>
           </div>
         </div>
         <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
       </div>
+      </AuthGuard>
     );
   }
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
@@ -73,7 +80,7 @@ export default function MonitorPage() {
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-xl font-semibold text-foreground">
-                  {nodeInfo ? 'Running' : 'Loading...'}
+                  {nodeInfo ? 'Running' : <Skeleton className="h-6 w-20" />}
                 </p>
               </CardContent>
             </Card>
@@ -85,7 +92,7 @@ export default function MonitorPage() {
                   <Clock className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-xl font-semibold text-foreground">
-                  {nodeInfo ? formatUptime(nodeInfo.uptime_seconds) : 'Loading...'}
+                  {nodeInfo ? formatUptime(nodeInfo.uptime_seconds) : <Skeleton className="h-6 w-24" />}
                 </p>
               </CardContent>
             </Card>
@@ -97,7 +104,7 @@ export default function MonitorPage() {
                   <Users className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-xl font-semibold text-foreground">
-                  {nodeInfo?.peers ?? 'Loading...'}
+                  {nodeInfo ? nodeInfo.peers : <Skeleton className="h-6 w-10" />}
                 </p>
               </CardContent>
             </Card>
@@ -109,7 +116,7 @@ export default function MonitorPage() {
                   <Layers className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-xl font-semibold text-foreground">
-                  {nodeInfo?.finalized_height ?? 'Loading...'}
+                  {nodeInfo ? nodeInfo.finalized_height : <Skeleton className="h-6 w-16" />}
                 </p>
               </CardContent>
             </Card>
@@ -128,7 +135,7 @@ export default function MonitorPage() {
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Node ID (hex)</p>
                   <p className="font-mono text-sm text-foreground break-all">
-                    {nodeInfo?.node_id || 'Loading...'}
+                    {nodeInfo ? nodeInfo.node_id : <Skeleton className="h-4 w-56 max-w-full" />}
                   </p>
                 </div>
                 <div>
@@ -137,12 +144,12 @@ export default function MonitorPage() {
                 </div>
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Version</p>
-                  <p className="text-sm text-foreground">{nodeInfo?.version || 'Loading...'}</p>
+                  <p className="text-sm text-foreground">{nodeInfo ? nodeInfo.version : <Skeleton className="h-4 w-16" />}</p>
                 </div>
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Protocol Version</p>
                   <p className="text-sm text-foreground">
-                    {nodeInfo?.protocol_version || 'Loading...'}
+                    {nodeInfo ? nodeInfo.protocol_version : <Skeleton className="h-4 w-12" />}
                   </p>
                 </div>
                 <div>
@@ -152,13 +159,13 @@ export default function MonitorPage() {
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Listen Address</p>
                   <p className="font-mono text-xs text-foreground break-all">
-                    {nodeInfo?.listen_addr || 'Loading...'}
+                    {nodeInfo ? nodeInfo.listen_addr : <Skeleton className="h-4 w-40 max-w-full" />}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Data Directory</p>
                   <p className="font-mono text-xs text-foreground break-all">
-                    {nodeInfo?.data_dir || 'Loading...'}
+                    {nodeInfo ? nodeInfo.data_dir : <Skeleton className="h-4 w-32 max-w-full" />}
                   </p>
                 </div>
               </div>
@@ -212,6 +219,16 @@ export default function MonitorPage() {
                     </tbody>
                   </table>
                 </div>
+              ) : !peers && !peersError ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <p className="text-foreground/60 text-sm">No peers connected</p>
               )}
@@ -224,6 +241,7 @@ export default function MonitorPage() {
       </div>
       <ConfigModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
+    </AuthGuard>
   );
 }
 

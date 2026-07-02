@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ConfigModal } from './config-modal';
 import { NotificationBell } from './notifications/notification-bell';
+import { UserAvatar } from './user-avatar';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
@@ -99,9 +100,7 @@ function UserBlock() {
   return (
     <div className="p-4 border-b border-sidebar-border">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-foreground/70 text-sm font-semibold border border-border">
-          {(supabaseUser.email ?? '?')[0].toUpperCase()}
-        </div>
+        <UserAvatar user={supabaseUser} size={36} />
         <div className="flex-1 min-w-0">
           <p className="text-sm text-foreground truncate font-medium">{supabaseUser.email}</p>
           <p className="text-xs text-muted-foreground font-mono truncate">{did}</p>
