@@ -23,7 +23,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const allowed = isSupabaseConfigured ? !!supabaseUser : isConfigured;
+  // A live Supabase session OR a complete manual config (endpoint + JWT)
+  // counts as authenticated — mirroring the middleware's cookie check.
+  const allowed = (isSupabaseConfigured && !!supabaseUser) || isConfigured;
 
   useEffect(() => {
     if (!isLoading && !allowed) {

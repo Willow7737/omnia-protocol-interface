@@ -73,13 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSupabaseConfigured =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Load endpoint + manual JWT from localStorage on mount
+  // Load endpoint + manual JWT from localStorage on mount. The manual JWT
+  // is honored even when Supabase is configured — "Connect manually" must
+  // survive a reload. If a Supabase session exists, handleSession() will
+  // overwrite the JWT with a freshly minted one moments later.
   useEffect(() => {
     const endpoint = localStorage.getItem(ENDPOINT_KEY);
     const manualJwt = localStorage.getItem(MANUAL_JWT_KEY);
     if (endpoint) setNodeEndpoint(endpoint);
-    if (manualJwt && !isSupabaseConfigured) setNodeJwt(manualJwt);
-  }, [isSupabaseConfigured]);
+    if (manualJwt) setNodeJwt(manualJwt);
+  }, []);
 
   // When we have a Supabase session, mint a node JWT.
   // Defined first so the email-poll effect and the auth-state effect can both use it.
@@ -87,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session) {
       setSupabaseUser(null);
       setDid(null);
-      setNodeJwt(null);
+      // No Supabase session — fall back to a manual JWT if one is stored,
+      // instead of clobbering a "Connect manually" setup. signOut() removes
+      // the stored key first, so this still clears on real sign-out.
+      setNodeJwt(localStorage.getItem(MANUAL_JWT_KEY));
       return;
     }
 
