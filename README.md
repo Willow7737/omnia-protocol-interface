@@ -2,6 +2,14 @@
 
 A **production-ready admin dashboard** for the Omnia Protocol distributed consensus network. Monitor nodes, participate in governance, manage validators, track economics, and explore events - all from a beautiful, real-time web interface.
 
+> 🟢 **Deployed and live** against the public Omnia testnet — a multi-node
+> Lane 0 validator network at `https://78.47.43.136.sslip.io` (BFT finality
+> measured at 10k-event bursts and across a 3-region WAN; see the protocol
+> repo's [`benchmark-gates.md`](https://github.com/Willow7737/omnia-protocol/blob/main/docs/reference/benchmark-gates.md)).
+> Sign-in is handled by **Supabase** (Google/GitHub/email) — node JWTs are
+> minted server-side by the `mint-node-jwt` edge function, so no protocol
+> secret ever reaches the browser.
+
 ## 🎯 Quick Start
 
 ### Prerequisites
@@ -24,12 +32,16 @@ open http://localhost:3000
 
 ### First Connection
 
-1. You'll see the welcome screen
-2. Click **"Connect to Node"**
-3. Enter your node's API endpoint (e.g., `https://localhost:8080`)
-4. Provide your JWT authentication token
-5. Click **"Connect"**
-6. Dashboard loads and begins real-time monitoring
+**Hosted / default (Supabase auth):**
+1. Sign in with Google, GitHub, or email on the welcome screen
+2. The dashboard mints a node JWT server-side and connects to the public
+   testnet (`https://78.47.43.136.sslip.io`) automatically
+
+**Self-hosted node (manual):**
+1. Open the connection settings (config modal)
+2. Enter your node's API endpoint (e.g., `http://localhost:9090`)
+3. Provide a JWT signed with your node's `OMNIA_JWT_SECRET`
+4. Connect — the dashboard begins real-time monitoring
 
 ## 📊 Features
 
@@ -355,7 +367,7 @@ import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 - Governance analytics
 
 ### Phase 4 (2027+)
-- Mobile app (React Native)
+- ~~Mobile app~~ — **shipped separately as [Omnia Wallet](https://github.com/Willow7737/Omnia-Wallet)** (Flutter, v1 live July 2026)
 - Offline mode with sync
 - Advanced analytics engine
 - Third-party integrations
