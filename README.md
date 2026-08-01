@@ -5,15 +5,26 @@ A **production-ready admin dashboard** for the Omnia Protocol distributed consen
 > 🟢 **Deployed and live** against the public Omnia testnet node at
 > `https://78.47.43.136.sslip.io`.
 >
-> ⚠️ **What that node is today:** a **single node with zero peers**, which
-> reports `not_ready` on `/readyz` and has finalized nothing
-> (`finalized_height: 0`). Multi-node Lane 0 BFT finality is real and
-> measured — 10k-event bursts and a 3-region WAN, see the protocol repo's
-> [`benchmark-gates.md`](https://github.com/Willow7737/omnia-protocol/blob/main/docs/reference/benchmark-gates.md)
-> — but those were stress runs, not a standing network. Panels that depend
-> on peers, validators, or finality height will be empty against the public
-> endpoint; point the dashboard at a local Docker testnet to see them
-> populated.
+> 🌍 **What that node is today:** the public ingress of a **standing 3-node
+> geo-distributed validator mesh** — Nuremberg (this endpoint), Ashburn, and
+> Singapore. Each has 2 peers, all on v0.1.76, with Lane 0 finalizing
+> events. Nodes B and C are validators without public HTTP, so the peers
+> panel shows them as peers but they cannot be queried directly.
+>
+> **What the dashboard will and won't show:**
+> - **Peers panel** — populated (2 peers).
+> - **Lane 0 counters** — populated (`acks_accepted`, `events_finalized`).
+> - **Finalized height** — still `0`. It counts **Lane 1** (canonical DAG)
+>   commits, and Lane 1 has committed nothing because the network is quiet,
+>   not because anything is wrong. `/readyz` reports `not_ready` with reason
+>   `no_finalization` for the same reason.
+> - **Validators panel** — 3 validators, stake 1 each.
+>
+> Point the dashboard at a local Docker testnet with traffic if you want to
+> watch Lane 1 finality advance.
+>
+> ⚠️ All three nodes are run by the same operator. The mesh survives machine
+> and region failure; it is not yet distributed across trust boundaries.
 >
 > Sign-in is handled by **Supabase** (Google/GitHub/email) — node JWTs are
 > minted server-side by the `mint-node-jwt` edge function, so no protocol
