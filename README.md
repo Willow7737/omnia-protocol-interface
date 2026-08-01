@@ -2,10 +2,19 @@
 
 A **production-ready admin dashboard** for the Omnia Protocol distributed consensus network. Monitor nodes, participate in governance, manage validators, track economics, and explore events - all from a beautiful, real-time web interface.
 
-> 🟢 **Deployed and live** against the public Omnia testnet — a multi-node
-> Lane 0 validator network at `https://78.47.43.136.sslip.io` (BFT finality
-> measured at 10k-event bursts and across a 3-region WAN; see the protocol
-> repo's [`benchmark-gates.md`](https://github.com/Willow7737/omnia-protocol/blob/main/docs/reference/benchmark-gates.md)).
+> 🟢 **Deployed and live** against the public Omnia testnet node at
+> `https://78.47.43.136.sslip.io`.
+>
+> ⚠️ **What that node is today:** a **single node with zero peers**, which
+> reports `not_ready` on `/readyz` and has finalized nothing
+> (`finalized_height: 0`). Multi-node Lane 0 BFT finality is real and
+> measured — 10k-event bursts and a 3-region WAN, see the protocol repo's
+> [`benchmark-gates.md`](https://github.com/Willow7737/omnia-protocol/blob/main/docs/reference/benchmark-gates.md)
+> — but those were stress runs, not a standing network. Panels that depend
+> on peers, validators, or finality height will be empty against the public
+> endpoint; point the dashboard at a local Docker testnet to see them
+> populated.
+>
 > Sign-in is handled by **Supabase** (Google/GitHub/email) — node JWTs are
 > minted server-side by the `mint-node-jwt` edge function, so no protocol
 > secret ever reaches the browser.
