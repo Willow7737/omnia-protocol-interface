@@ -5,25 +5,32 @@ A **production-ready admin dashboard** for the Omnia Protocol distributed consen
 > 🟢 **Deployed and live** against the public Omnia testnet node at
 > `https://78.47.43.136.sslip.io`.
 >
-> 🌍 **What that node is today:** the public ingress of a **standing 3-node
-> geo-distributed validator mesh** — Nuremberg (this endpoint), Ashburn, and
-> Singapore. Each has 2 peers, all on v0.1.76, with Lane 0 finalizing
-> events. Nodes B and C are validators without public HTTP, so the peers
-> panel shows them as peers but they cannot be queried directly.
+> 🌍 **What that node is today:** the public ingress of a **standing 5-node
+> geo-distributed validator mesh** — Nuremberg (this endpoint), Ashburn,
+> Singapore, Helsinki, and Falkenstein. Each has 4 peers, all on v0.1.95
+> (protocol `/omnia/4.0.0`). Nodes B–E are validators without public HTTP, so
+> the peers panel shows them as peers but they cannot be queried directly.
 >
-> **What the dashboard will and won't show:**
-> - **Peers panel** — populated (2 peers).
-> - **Lane 0 counters** — populated (`acks_accepted`, `events_finalized`).
-> - **Finalized height** — still `0`. It counts **Lane 1** (canonical DAG)
->   commits, and Lane 1 has committed nothing because the network is quiet,
->   not because anything is wrong. `/readyz` reports `not_ready` with reason
->   `no_finalization` for the same reason.
-> - **Validators panel** — 3 validators, stake 1 each.
+> **What the dashboard will and won't show** (verified live against node A):
+> - **Peers panel** — populated (4 peers).
+> - **Lane 0 counters** — currently `0`. Nothing has been submitted to the
+>   mesh since the v0.1.95 rollout, so `acks_accepted` and `events_finalized`
+>   both read zero. The lane is idle, not stalled.
+> - **Finalized height** — `0`. It counts **Lane 1** (canonical DAG) commits,
+>   and Lane 1 has committed nothing because the network is quiet.
+> - **Readiness** — `/readyz` reports `ready`. It requires peers and
+>   not-syncing, *not* recent traffic, so a quiet network stays ready. (Older
+>   builds returned `not_ready` with reason `no_finalization` here; that is
+>   no longer the contract.)
+> - **Validators panel** — 1 validator, stake 1. This panel reads the staking
+>   registry, where only node A is registered; it is not the Lane 0 validator
+>   set, which is configured out-of-band via `OMNIA_LANE0_VALIDATORS` and has
+>   all five members.
 >
 > Point the dashboard at a local Docker testnet with traffic if you want to
-> watch Lane 1 finality advance.
+> watch the Lane 0 counters and Lane 1 finality actually advance.
 >
-> ⚠️ All three nodes are run by the same operator. The mesh survives machine
+> ⚠️ All five nodes are run by the same operator. The mesh survives machine
 > and region failure; it is not yet distributed across trust boundaries.
 >
 > Sign-in is handled by **Supabase** (Google/GitHub/email) — node JWTs are
